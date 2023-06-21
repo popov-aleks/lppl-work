@@ -113,7 +113,7 @@ fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 start_time = time.time()
 
 # Downloading stock data
-data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks100, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 # Not particularly important- our starting capital for assigned to each stock
