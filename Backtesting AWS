@@ -134,9 +134,9 @@ entry_signal = entry_signal.loc[start_date:end_date]
 exit_signal = exit_signal.loc[start_date:end_date]
 
 # # Assigning an equal proportion of the capital to each stock, investing it all when we get an entr signal
-num_stocks_to_buy = entry_signal.sum(axis=1)
-weights = entry_signal.div(num_stocks_to_buy, axis=0)
-weights = weights.mul(initial_capital / data).fillna(0)
+#num_stocks_to_buy = entry_signal.sum(axis=1)
+#weights = entry_signal.div(num_stocks_to_buy, axis=0)
+#weights = weights.mul(initial_capital / data).fillna(0)
 
 # Creating the portfolio. Can change fees as desired
 portfolio = vbt.Portfolio.from_signals(
@@ -144,8 +144,8 @@ portfolio = vbt.Portfolio.from_signals(
     entry_signal,
     exit_signal,
     init_cash=initial_capital,
-    size=weights,
-    size_type='Amount',
+#    size=weights,
+#    size_type='Amount',
     fees=0.001
 )
 
