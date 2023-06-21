@@ -1,1 +1,141 @@
+import vectorbt as vbt
+import yfinance as yf
+import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta
+from scipy.optimize import least_squares
+from sklearn.metrics import r2_score
+import warnings
+from lppls import lppls
+
+
+warnings.filterwarnings('ignore')
+
+url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+tables = pd.read_html(url)
+table = tables[0]
+stocks = table['Symbol'].tolist()
+stocks.remove('BRK.B')
+stocks.remove('BF.B')
+stocks10 = stocks[:10]
+
+start_date='2022-10-15'
+end_date='2023-06-15'
+
+
+def loss(params, x, y):
+    return func(x, *params) - y
+
+
+def func(x, a, b, c):
+    return a * np.exp(b * x) + c
+
+
+def exp_growth_and_r2(close, model_window=90, r2_b_threshold=0.001, days_before_tc=14, max_searches=25):
+    try:
+        output = np.zeros(len(close))
+        for i in range(model_window, len(close), 30):
+            historical_data = close.iloc[i-model_window:i]
+            historical_data = historical_data.rolling(window = 5).mean().dropna()
+
+            historical_data.dropna(inplace=True)
+
+            xdata = (historical_data.index - historical_data.index[0]).days.values
+            ydata = historical_data.values
+            log_ydata = np.log(ydata + 1).ravel()
+
+            res = least_squares(loss, x0=(1, 0.01, 1), args=(xdata, log_ydata))
+
+            fitted_y = func(xdata, *res.x).ravel()
+
+            a, b, c = res.x
+            r2 = r2_score(log_ydata, fitted_y)
+            
+            if r2 * b > r2_b_threshold:
+                time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
+
+                price = np.log(historical_data.values).ravel()
+
+                observations = np.array([time, price])
+
+                tcs = []
+
+                for _ in range(5):
+                    lppls_model = lppls.LPPLS(observations=observations)
+                    tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
+                    tcs.append(tc)
+
+                tc = np.median(tcs)
+                tc = tc - datetime.toordinal(historical_data.index[-1])
+                
+                if tc > 14:
+                    output[i] = 1
+                    if i+int(round(tc))-14 < len(output):
+                        output[i+int(round(tc))-14]=-1
+                
+        output[-1] = -1
+        return output
+    
+    except Exception as e:
+        print(f"Couldn't process stock. Error: {str(e)}")
+
+
+BuyIndicator = vbt.IndicatorFactory(
+    input_names=['close'],
+    param_names=['model_window', 'r2_b_threshold', 'days_before_tc', 'max_searches'],
+    output_names=['buy_indicator']
+).from_apply_func(exp_growth_and_r2,
+                model_window=90, 
+                r2_b_threshold=0.001, 
+                days_before_tc=14, 
+                max_searches=25,
+                keep_pd=True,
+                per_column=True)
+
+fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
+fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
+
+data = yf.download(['ANSS', 'GOOGL', 'AXON', 'ETN', 'HWM', 'MOS', 'PGR', 'PWR', 'REGN', 'TT'], start=fetch_start_date, end=end_date)['Close']
+data = data.ffill().bfill()
+
+initial_capital = 1000000
+
+import itertools
+
+# Define your parameter space
+param_space = {
+    'model_window': [60, 90, 120], 
+    'r2_b_threshold': [0.0005, 0.001, 0.0015],
+    'days_before_tc': [7, 14, 21],
+    'max_searches': [20, 25, 30]
+}
+
+# Generate all combinations of parameters
+param_combinations = list(itertools.product(*param_space.values()))
+
+# Generate portfolios for all combinations
+portfolio_list = []
+for params in param_combinations:
+    params_dict = dict(zip(param_space.keys(), params))
+    
+    buy_indicator = BuyIndicator.run(data, **params_dict)
+    entry_signal = buy_indicator.buy_indicator == 1
+    exit_signal = buy_indicator.buy_indicator == -1
+
+
+    portfolio = vbt.Portfolio.from_signals(
+        data,
+        entry_signal,
+        exit_signal,
+        init_cash=initial_capital,
+        fees=0.001
+    )
+
+    portfolio_list.append((params_dict, portfolio))
+
+# Find the portfolio with the highest total return
+best_portfolio_params, best_portfolio = max(portfolio_list, key=lambda x: x[1].final_value().iloc[-1])
+
+print("Best parameters:")
+print(best_portfolio_params)
 
