@@ -169,7 +169,9 @@ adjusted_returns = returns / exposure
 # Handle cases where exposure is zero (to avoid division by zero)
 adjusted_returns = adjusted_returns.replace([np.inf, -np.inf], np.nan)
 
-print(f"Adjusted daily returns: {adjusted_returns}")
+adjusted_total_returns = (adjusted_returns + 1).cumprod() - 1
+
+print(f"Adjusted total returns: {adjusted_total_returns}")
 
 print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 
