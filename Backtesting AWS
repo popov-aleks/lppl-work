@@ -171,7 +171,9 @@ adjusted_returns = adjusted_returns.replace([np.inf, -np.inf], np.nan)
 
 adjusted_total_returns = (adjusted_returns + 1).cumprod() - 1
 
-print(f"Adjusted total returns: {adjusted_total_returns}")
+final_adjusted_total_return = adjusted_total_returns.iloc[-2]
+
+print(f"Final adjusted total return: {final_adjusted_total_return}")
 
 print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 
