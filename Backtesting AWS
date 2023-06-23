@@ -177,7 +177,5 @@ print(f"Final adjusted total return: {final_adjusted_total_return}")
 
 print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 
-print(str(portfolio.total_returns()))
-
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
