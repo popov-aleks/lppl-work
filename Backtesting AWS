@@ -158,7 +158,18 @@ print(portfolio.stats(group_by = True))
 
 print(f"Average exposure: {portfolio.gross_exposure(group_by = True).mean()}")
 
-print(f"Exposure-adjusted total returns: {portfolio.total_return(group_by = True) * portfolio.gross_exposure(group_by = True).mean()}")
+exposure = portfolio.gross_exposure(group_by=True)
+
+# Get the returns of the portfolio for each day
+returns = portfolio.returns(group_by=True)
+
+# Adjust the returns by the gross exposure
+adjusted_returns = returns / exposure
+
+# Handle cases where exposure is zero (to avoid division by zero)
+adjusted_returns = adjusted_returns.replace([np.inf, -np.inf], np.nan)
+
+print(f"Adjusted daily returns: {adjusted_returns}")
 
 print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 
