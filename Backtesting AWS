@@ -158,7 +158,7 @@ print(portfolio.stats(group_by = True))
 
 print(portfolio.gross_exposure(group_by = True).mean())
 
-print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')})
+print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
