@@ -162,7 +162,7 @@ total_returns_adjusted = portfolio.total_return() * average_exposure
 
 # Get the Sharpe ratio
 data = data.asfreq('D')  # set frequency to daily
-sharpe_ratio = portfolio.sharpe_ratio(risk_free=0.0)
+sharpe_ratio = portfolio.sharpe_ratio(risk_free=0.0, freq='D')
 
 print(f"Average Gross Exposure: {average_exposure}")
 print(f"Total Returns Adjusted for Average Exposure: {total_returns_adjusted}")
