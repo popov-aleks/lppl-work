@@ -152,8 +152,8 @@ portfolio = vbt.Portfolio.from_signals(
 # Printing stats- can add extra info about the portfolio at this point
 print(portfolio.stats(group_by = True))
 
-total_portfolio_value = portfolio.value().sum(axis=1)
-total_portfolio_value.vbt.plot().show()
+#total_portfolio_value = portfolio.value().sum(axis=1)
+#total_portfolio_value.vbt.plot().show()
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
