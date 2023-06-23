@@ -156,7 +156,9 @@ print(portfolio.stats(group_by = True))
 #total_portfolio_value = portfolio.value().sum(axis=1)
 #total_portfolio_value.vbt.plot().show()
 
-print(portfolio.sharpe_ratio(group_by = True, freq='D'))
+print(portfolio.gross_exposure(group_by = True).mean())
+
+print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')})
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
