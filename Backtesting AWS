@@ -159,7 +159,7 @@ print(portfolio.stats(group_by = True))
 values = portfolio.value()
 weights = values / values.sum(axis=1).values[:, None]
 portfolio_returns = (weights * portfolio.returns()).sum(axis=1)
-print(portfolio_returns.vbt.returns.sharpe_ratio(risk_free=risk_free, freq='D'))
+print(portfolio_returns.vbt.returns.sharpe_ratio(risk_free=0.0, freq='D'))
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
