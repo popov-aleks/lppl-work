@@ -151,7 +151,7 @@ portfolio = vbt.Portfolio.from_signals(
 )
 
 # Printing stats- can add extra info about the portfolio at this point
-print(portfolio.stats(group_by = True))
+print(portfolio.stats(metrics = ["start", "end", "period", "start_value", "end_value", "total_return", "benchmark_return", "max_gross_exposure", "total_fees_paid", "max_dd", "total_trades", "win_rate", "profit_factor", "expectancy", "sharpe_ratio", "sortino_ratio"], group_by = True))
 
 #total_portfolio_value = portfolio.value().sum(axis=1)
 #total_portfolio_value.vbt.plot().show()
