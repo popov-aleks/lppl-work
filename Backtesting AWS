@@ -108,13 +108,13 @@ BuyIndicator = vbt.IndicatorFactory(
                 
                 
 # We want to start the data fetch model_window days before the start of the backtest so we can run modelling on the first data
-fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
+fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=120)
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 
 start_time = time.time()
 
 # Downloading stock data
-data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 # Not particularly important- our starting capital for assigned to each stock
@@ -176,6 +176,8 @@ final_adjusted_total_return = adjusted_total_returns.iloc[-2]
 print(f"Final adjusted total return: {final_adjusted_total_return}")
 
 print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
+
+print(str(portfolio.total_returns()))
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
