@@ -120,7 +120,7 @@ data = data.ffill().bfill()
 initial_capital = 1000000
 
 # Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
-buy_indicator = BuyIndicator.run(data, model_window=120, r2_b_threshold=0.001, days_before_tc=7, max_searches=20)
+buy_indicator = BuyIndicator.run(data, model_window=90, r2_b_threshold=0.001, days_before_tc=14, max_searches=20)
 
 entry_signal = buy_indicator.buy_indicator == 1
 exit_signal = buy_indicator.buy_indicator == -1
