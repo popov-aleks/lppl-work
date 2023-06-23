@@ -156,15 +156,20 @@ print(portfolio.stats(group_by = True))
 #total_portfolio_value.vbt.plot().show()
 
 weights = portfolio.weights()
-gross_exposure = weights.abs().mean().mean()
+
+# calculate gross exposure of the portfolio at each time step and average it
+gross_exposure = weights.abs().sum(axis=1).mean()
 print(f'Average Gross Exposure: {gross_exposure}')
 
+# calculate returns of the portfolio at each time step
+portfolio_returns = (weights * portfolio.returns()).sum(axis=1)
 
-total_return = portfolio.total_return()
+# calculate total return of the portfolio adjusted for average exposure
+total_return = portfolio_returns.sum()
 total_return_adj_exposure = total_return * gross_exposure
 print(f'Total Returns Adjusted for Average Exposure: {total_return_adj_exposure}')
 
-portfolio_returns = portfolio.returns()
+# calculate Sharpe ratio for the portfolio
 sharpe_ratio = portfolio_returns.vbt.returns.sharpe_ratio(risk_free=0.0, freq='D')
 print(f'Sharpe Ratio: {sharpe_ratio}')
 
