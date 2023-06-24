@@ -156,7 +156,7 @@ sp500_data = yf.download('^GSPC', start=fetch_start_date, end=end_date)['Adj Clo
 sp500_return = sp500_data.iloc[-1] / sp500_data.iloc[0] - 1
 
 # Printing stats- can add extra info about the portfolio at this point
-print(portfolio.stats(metrics = ["start", "end", "period", "start_value", "end_value", "total_return", "benchmark_return", "max_gross_exposure", "total_fees_paid", "max_dd", "total_trades", "win_rate", "profit_factor", "expectancy", "sharpe_ratio", "sortino_ratio"], benchmark_return=sp500_return, group_by = True))
+print(portfolio.stats(metrics = ["start", "end", "period", "start_value", "end_value", "total_return", "benchmark_return", "max_gross_exposure", "total_fees_paid", "max_dd", "total_trades", "win_rate", "profit_factor", "expectancy", "sharpe_ratio", "sortino_ratio"], group_by = True))
 
 #total_portfolio_value = portfolio.value().sum(axis=1)
 #total_portfolio_value.vbt.plot().show()
