@@ -201,5 +201,7 @@ print(f"Final adjusted total return: {final_adjusted_total_return * 100:.2f}%")
 
 print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 
+print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
+
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
