@@ -245,7 +245,7 @@ print(bond_portfolio.stats(metrics = ["start",
                                       "sortino_ratio"], group_by = True))
 
 # Calculate the combined returns
-combined_returns = 0.7 * adjusted_returns + 0.3 * bond_portfolio.returns()
+combined_returns = 0.7 * adjusted_returns + bond_portfolio.returns()
 
 # Calculate the combined total return
 combined_total_returns = (combined_returns + 1).cumprod() - 1
@@ -256,7 +256,7 @@ final_combined_total_return = combined_total_returns.iloc[-1]
 print(f"Final combined total return: {final_combined_total_return * 100:.2f}%")
 
 # Calculate Sharpe ratio for combined returns
-print(f"Sharpe ratio (combined): {vbt.returns.sharpe_ratio(combined_returns, freq='D')}")
+print(f"Sharpe ratio (combined): {combined_returns.vbt.returns.sharpe_ratio(freq='D')}")
 
 # Calculate Sortino ratio for combined returns
-print(f"Sortino ratio (combined): {vbt.returns.sortino_ratio(combined_returns, freq='D')}")
+print(f"Sortino ratio (combined): {combined_returns.vbt.returns.sortino_ratio(freq='D')}")
