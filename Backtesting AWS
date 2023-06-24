@@ -178,7 +178,18 @@ print(portfolio.stats(metrics = ["start",
 #total_portfolio_value = portfolio.value().sum(axis=1)
 #total_portfolio_value.vbt.plot().show()
 
-print(f"Average exposure: {portfolio.gross_exposure(group_by = True).mean()}")
+sp500_data = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
+
+# Calculate the return for S&P 500 over the entire period
+sp500_returns = sp500_data['Close'].pct_change().dropna()
+
+portfolio.benchmark_rets = sp500_returns
+
+# Calculate the total return of S&P 500
+total_sp500_return = (sp500_returns + 1).prod() - 1
+
+# Print the total return
+print(f"S&P 500 Total Return: {total_sp500_return * 100:.2f}%")
 
 exposure = portfolio.gross_exposure(group_by=True)
 
