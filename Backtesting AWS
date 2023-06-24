@@ -197,7 +197,7 @@ adjusted_total_returns = (adjusted_returns + 1).cumprod() - 1
 
 final_adjusted_total_return = adjusted_total_returns.iloc[-2]
 
-print(f"Final adjusted total return: {final_adjusted_total_return}")
+print(f"Final adjusted total return: {final_adjusted_total_return * 100:.2f}%")
 
 print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 
