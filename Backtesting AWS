@@ -153,9 +153,9 @@ portfolio = vbt.Portfolio.from_signals(
 sp500_data = yf.download('^GSPC', start=fetch_start_date, end=end_date)['Adj Close']
 
 # Calculate the return for S&P 500 over the entire period
-sp500_return = sp500_data.iloc[-1] / sp500_data.iloc[0] - 1
+sp500_returns = sp500_data['Close'].pct_change().dropna()
 
-portfolio.benchmark_rets = sp500_return
+portfolio.benchmark_rets = sp500_returns
 
 # Printing stats- can add extra info about the portfolio at this point
 print(portfolio.stats(metrics = ["start", 
