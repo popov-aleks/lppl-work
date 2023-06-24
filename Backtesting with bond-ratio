@@ -1,0 +1,179 @@
+import vectorbt as vbt
+import yfinance as yf
+import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta
+from scipy.optimize import least_squares
+from sklearn.metrics import r2_score
+import warnings
+from lppls import lppls
+import time
+from vectorbt.portfolio.enums import SizeType
+
+warnings.filterwarnings('ignore')
+
+url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+tables = pd.read_html(url)
+table = tables[0]
+stocks = table['Symbol'].tolist()
+stocks.remove('BRK.B')
+stocks.remove('BF.B')
+stocks100 = stocks[:100]
+stocks10 = stocks[:10]
+
+start_date='2022-10-15'
+end_date='2023-06-15'
+
+def loss(params, x, y):
+    return func(x, *params) - y
+
+def func(x, a, b, c):
+    return a * np.exp(b * x) + c
+
+def exp_growth_and_r2(close, model_window=120, r2_b_threshold=0.0005, days_before_tc=7, max_searches=20):
+    try:
+        output = np.zeros(len(close))
+        for i in range(model_window, len(close), 30):
+            historical_data = close.iloc[i-model_window:i]
+            historical_data = historical_data.rolling(window = 5).mean().dropna()
+
+            historical_data.dropna(inplace=True)
+
+            xdata = (historical_data.index - historical_data.index[0]).days.values
+            ydata = historical_data.values
+            log_ydata = np.log(ydata + 1).ravel()
+
+            res = least_squares(loss, x0=(1, 0.01, 1), args=(xdata, log_ydata))
+
+            fitted_y = func(xdata, *res.x).ravel()
+
+            a, b, c = res.x
+            r2 = r2_score(log_ydata, fitted_y)
+            
+            if r2 * b > r2_b_threshold:
+                time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
+
+                price = np.log(historical_data.values).ravel()
+
+                observations = np.array([time, price])
+
+                tcs = []
+
+                for _ in range(5):
+                    lppls_model = lppls.LPPLS(observations=observations)
+                    tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
+                    tcs.append(tc)
+
+                tc = np.median(tcs)
+                tc = tc - datetime.toordinal(historical_data.index[-1])
+                
+                if tc > 14:
+                    output[i] = 1
+                    if i+int(round(tc))-14 < len(output):
+                        output[i+int(round(tc))-14]=-1
+                
+        output[-1] = -1
+        return output
+    
+    except Exception as e:
+        print(f"Couldn't process stock. Error: {str(e)}")
+
+BuyIndicator = vbt.IndicatorFactory(
+    input_names=['close'],
+    param_names=['model_window', 'r2_b_threshold', 'days_before_tc', 'max_searches'],
+    output_names=['buy_indicator']
+).from_apply_func(exp_growth_and_r2,
+                model_window=90, 
+                r2_b_threshold=0.001, 
+                days_before_tc=14, 
+                max_searches=25,
+                keep_pd=True,
+                per_column=True)
+
+fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
+fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
+
+data = yf.download(stocks100, start=fetch_start_date, end=end_date)['Adj Close'].dropna(how='all')
+
+buy_indicators = BuyIndicator.run(data)['buy_indicator']
+
+data = yf.download(stocks100, start=start_date, end=end_date)['Adj Close'].dropna(how='all')
+
+buy_indicators = buy_indicators[buy_indicators.index >= start_date]
+
+buy_indicators = buy_indicators[buy_indicators.index <= end_date]
+
+initial_capital = 100000
+cash = initial_capital / len(stocks100)
+
+entry_signal = buy_indicators > 0
+
+exit_signal = buy_indicators < 0
+
+# Fetch TLT (Long-Term Treasury Bond ETF) data
+tlt_data = yf.download('TLT', start=fetch_start_date, end=end_date)['Adj Close']
+
+# Prepare data for the Portfolio
+combined_data = pd.concat([data, tlt_data], axis=1)
+
+# We buy and hold TLT for the whole period
+tlt_entry_signal = pd.Series(1, index=tlt_data.index)
+tlt_exit_signal = pd.Series(0, index=tlt_data.index)
+
+# Prepare entry and exit signals for the Portfolio
+combined_entry_signal = pd.concat([entry_signal, tlt_entry_signal], axis=1)
+combined_exit_signal = pd.concat([exit_signal, tlt_exit_signal], axis=1)
+
+# Adjust the cash flow for 60% stocks and 40% bonds
+init_cash = np.full(combined_data.shape[1], np.nan)
+init_cash[:data.shape[1]] = initial_capital*0.6/data.shape[1]  # 60% for stocks
+init_cash[-1] = initial_capital*0.4  # 40% for TLT
+
+# Creating the combined portfolio
+portfolio = vbt.Portfolio.from_signals(
+    combined_data,
+    combined_entry_signal,
+    combined_exit_signal,
+    init_cash=init_cash,  
+    fees=0.001
+)
+
+# Use adjusted returns for stocks
+stock_returns = portfolio.iloc[:, :data.shape[1]].returns()
+bond_returns = portfolio.iloc[:, -1].returns()
+
+# Adjust the stock returns by the gross exposure
+adjusted_stock_returns = stock_returns / portfolio.iloc[:, :data.shape[1]].gross_exposure()
+adjusted_stock_returns = adjusted_stock_returns.replace([np.inf, -np.inf], np.nan)
+
+# Combine adjusted stock returns and bond returns
+combined_returns = pd.concat([adjusted_stock_returns, bond_returns], axis=1)
+
+# Recreate the combined portfolio with adjusted returns
+portfolio = vbt.Portfolio.from_returns(
+    combined_returns,
+    init_cash=init_cash,
+    freq='D'
+)
+
+# Now you can analyze the portfolio as before
+print(portfolio.stats(metrics = ["start", 
+                                 "end", 
+                                 "period", 
+                                 "start_value", 
+                                 "end_value", 
+                                 "total_return", 
+                                 "benchmark_return",
+                                 "max_gross_exposure", 
+                                 "total_fees_paid", 
+                                 "max_dd", 
+                                 "total_trades", 
+                                 "win_rate", 
+                                 "profit_factor", 
+                                 "expectancy", 
+                                 "sharpe_ratio", 
+                                 "sortino_ratio"]))
+
+print(f"Sharpe ratio: {portfolio.sharpe_ratio()}")
+
+print(f"Sortino ratio: {portfolio.sortino_ratio()}")
