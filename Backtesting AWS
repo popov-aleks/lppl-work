@@ -155,6 +155,8 @@ sp500_data = yf.download('^GSPC', start=fetch_start_date, end=end_date)['Adj Clo
 # Calculate the return for S&P 500 over the entire period
 sp500_return = sp500_data.iloc[-1] / sp500_data.iloc[0] - 1
 
+portfolio.benchmark_rets = sp500_returns
+
 # Printing stats- can add extra info about the portfolio at this point
 print(portfolio.stats(metrics = ["start", 
                                  "end", 
@@ -162,12 +164,7 @@ print(portfolio.stats(metrics = ["start",
                                  "start_value", 
                                  "end_value", 
                                  "total_return", 
-                                 "benchmark_return": {
-                                            "title": "Benchmark Return [%]",
-                                            "calc_func": "sp500_return",
-                                            "post_calc_func": "<function Portfolio.<lambda> at 0x7f954a8df280>",
-                                            "tags": "portfolio"
-                                 }, 
+                                 "benchmark_return",
                                  "max_gross_exposure", 
                                  "total_fees_paid", 
                                  "max_dd", 
