@@ -12,6 +12,8 @@ from vectorbt.portfolio.enums import SizeType
 
 warnings.filterwarnings('ignore')
 
+# Downloading the list of tickers in the S&P 500, removing BRK.B and BF.B as these always cause issues. 
+# stocks100 is simply the first 100 stocks (just used for testing)
 url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
 tables = pd.read_html(url)
 table = tables[0]
@@ -21,15 +23,28 @@ stocks.remove('BF.B')
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 
+# The start and end dates for the backtest. Data will be fetched from a certain time before that for modelling purposes.
 start_date='2022-10-15'
 end_date='2023-06-15'
 
+
+# Loss function to calculate value of r^2
 def loss(params, x, y):
     return func(x, *params) - y
 
+# Exponential function for modelling
 def func(x, a, b, c):
     return a * np.exp(b * x) + c
 
+# This is the actual indicator. Currently, it is based on the modelling of the log of 5-day moving average of the price data
+# model_window days before the current date to an exponential curve. This modelling happens every 30 days (but can be modified).
+# This is slightly arbitrary, but is just a starting point I chose, where the threshold depends on the multiple of the
+# model's exponent and its r^2 value, ie how closely it resembles a faster-than-exponential growth. If the model meets the
+# requirements, we fit it to the LPPL model. I have tried doing the normal curve_fit in this case, but that takes an 
+# incredibly long time. However, there is an lppl library in Python which is very efficient and, having visualised it, 
+# seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
+# Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
+# We sell everything at the end of the window.
 def exp_growth_and_r2(close, model_window=120, r2_b_threshold=0.0005, days_before_tc=7, max_searches=20):
     try:
         output = np.zeros(len(close))
@@ -78,6 +93,7 @@ def exp_growth_and_r2(close, model_window=120, r2_b_threshold=0.0005, days_befor
     except Exception as e:
         print(f"Couldn't process stock. Error: {str(e)}")
 
+# Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
     input_names=['close'],
     param_names=['model_window', 'r2_b_threshold', 'days_before_tc', 'max_searches'],
@@ -89,74 +105,52 @@ BuyIndicator = vbt.IndicatorFactory(
                 max_searches=25,
                 keep_pd=True,
                 per_column=True)
-
+                
+                
+# We want to start the data fetch model_window days before the start of the backtest so we can run modelling on the first data
 fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 
-data = yf.download(stocks100, start=fetch_start_date, end=end_date)['Adj Close'].dropna(how='all')
+start_time = time.time()
 
-buy_indicators = BuyIndicator.run(data)['buy_indicator']
+# Downloading stock data
+data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
+data = data.ffill().bfill()
 
-data = yf.download(stocks100, start=start_date, end=end_date)['Adj Close'].dropna(how='all')
+# Not particularly important- our starting capital for assigned to each stock
+initial_capital = 1000000
 
-buy_indicators = buy_indicators[buy_indicators.index >= start_date]
+# Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
+buy_indicator = BuyIndicator.run(data, model_window=120, r2_b_threshold=0.001, days_before_tc=7, max_searches=20)
 
-buy_indicators = buy_indicators[buy_indicators.index <= end_date]
+entry_signal = buy_indicator.buy_indicator == 1
+exit_signal = buy_indicator.buy_indicator == -1
 
-initial_capital = 100000
-cash = initial_capital / len(stocks100)
+# Dropping some extra columns to make it match data
+entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_r2_b_threshold', 'custom_days_before_tc', 'custom_max_searches'])
 
-entry_signal = buy_indicators > 0
+# Cropping the data for the backtest to make it faster
+data = data.loc[start_date:end_date]
+entry_signal = entry_signal.loc[start_date:end_date]
+exit_signal = exit_signal.loc[start_date:end_date]
 
-exit_signal = buy_indicators < 0
+# # Assigning an equal proportion of the capital to each stock, investing it all when we get an entr signal
+#num_stocks_to_buy = entry_signal.sum(axis=1)
+#weights = entry_signal.div(num_stocks_to_buy, axis=0)
+#weights = weights.mul(initial_capital / data).fillna(0)
 
-# Fetch TLT (Long-Term Treasury Bond ETF) data
-tlt_data = yf.download('TLT', start=fetch_start_date, end=end_date)['Adj Close']
-
-# Prepare data for the Portfolio
-combined_data = pd.concat([data, tlt_data], axis=1)
-
-# We buy and hold TLT for the whole period
-tlt_entry_signal = pd.Series(1, index=tlt_data.index)
-tlt_exit_signal = pd.Series(0, index=tlt_data.index)
-
-# Prepare entry and exit signals for the Portfolio
-combined_entry_signal = pd.concat([entry_signal, tlt_entry_signal], axis=1)
-combined_exit_signal = pd.concat([exit_signal, tlt_exit_signal], axis=1)
-
-# Adjust the cash flow for 60% stocks and 40% bonds
-init_cash = np.full(combined_data.shape[1], np.nan)
-init_cash[:data.shape[1]] = initial_capital*0.6/data.shape[1]  # 60% for stocks
-init_cash[-1] = initial_capital*0.4  # 40% for TLT
-
-# Creating the combined portfolio
+# Creating the portfolio. Can change fees as desired
 portfolio = vbt.Portfolio.from_signals(
-    combined_data,
-    combined_entry_signal,
-    combined_exit_signal,
-    init_cash=init_cash,  
+    data,
+    entry_signal,
+    exit_signal,
+    init_cash=initial_capital,
+#    size=weights,
+#    size_type='Amount',
     fees=0.001
 )
 
-# Use adjusted returns for stocks
-stock_returns = portfolio.iloc[:, :data.shape[1]].returns()
-bond_returns = portfolio.iloc[:, -1].returns()
-
-# Adjust the stock returns by the gross exposure
-adjusted_stock_returns = stock_returns / portfolio.iloc[:, :data.shape[1]].gross_exposure()
-adjusted_stock_returns = adjusted_stock_returns.replace([np.inf, -np.inf], np.nan)
-
-# Combine adjusted stock returns and bond returns
-combined_returns = pd.concat([adjusted_stock_returns, bond_returns], axis=1)
-
-# Recreate the combined portfolio with adjusted returns
-portfolio = vbt.Portfolio.from_returns(
-    combined_returns,
-    init_cash=init_cash,
-    freq='D'
-)
-
-# Now you can analyze the portfolio as before
+# Printing stats- can add extra info about the portfolio at this point
 print(portfolio.stats(metrics = ["start", 
                                  "end", 
                                  "period", 
@@ -172,8 +166,97 @@ print(portfolio.stats(metrics = ["start",
                                  "profit_factor", 
                                  "expectancy", 
                                  "sharpe_ratio", 
-                                 "sortino_ratio"]))
+                                 "sortino_ratio"], group_by = True))
 
-print(f"Sharpe ratio: {portfolio.sharpe_ratio()}")
+#total_portfolio_value = portfolio.value().sum(axis=1)
+#total_portfolio_value.vbt.plot().show()
 
-print(f"Sortino ratio: {portfolio.sortino_ratio()}")
+sp500_data = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
+
+# Calculate the return for S&P 500 over the entire period
+sp500_returns = sp500_data.pct_change().dropna()
+
+# Calculate the total return of S&P 500
+total_sp500_return = (sp500_returns + 1).prod() - 1
+
+# Print the total return
+print(f"S&P 500 Total Return: {total_sp500_return * 100:.2f}%")
+
+exposure = portfolio.gross_exposure(group_by=True)
+
+# Get the returns of the portfolio for each day
+returns = portfolio.returns(group_by=True)
+
+# Adjust the returns by the gross exposure
+adjusted_returns = returns / exposure
+
+# Handle cases where exposure is zero (to avoid division by zero)
+adjusted_returns = adjusted_returns.replace([np.inf, -np.inf], np.nan)
+
+adjusted_total_returns = (adjusted_returns + 1).cumprod() - 1
+
+final_adjusted_total_return = adjusted_total_returns.iloc[-2]
+
+print(f"Final adjusted total return: {final_adjusted_total_return * 100:.2f}%")
+
+print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
+
+print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
+
+end_time = time.time()
+print(f'Time taken: {end_time - start_time} seconds')
+
+# Downloading bond data
+bond_data = yf.download('TLT', start=fetch_start_date, end=end_date)['Close']
+bond_data = bond_data.ffill().bfill()
+
+# Running the simple buy-and-hold strategy for the bonds
+bond_entry_signal = pd.Series(data=1, index=bond_data.index)
+bond_exit_signal = pd.Series(data=0, index=bond_data.index)
+bond_exit_signal.iloc[-1] = 1
+
+# Initial capital for bonds is 30% of total
+bond_initial_capital = initial_capital * 0.3
+
+# Creating the bond portfolio
+bond_portfolio = vbt.Portfolio.from_signals(
+    bond_data,
+    bond_entry_signal,
+    bond_exit_signal,
+    init_cash=bond_initial_capital,
+    fees=0.001
+)
+
+# Printing bond portfolio stats
+print(bond_portfolio.stats(metrics = ["start", 
+                                      "end", 
+                                      "period", 
+                                      "start_value", 
+                                      "end_value", 
+                                      "total_return", 
+                                      "max_gross_exposure", 
+                                      "total_fees_paid", 
+                                      "max_dd", 
+                                      "total_trades", 
+                                      "win_rate", 
+                                      "profit_factor", 
+                                      "expectancy", 
+                                      "sharpe_ratio", 
+                                      "sortino_ratio"], group_by = True))
+
+# Calculate the combined returns
+combined_returns = 0.7 * adjusted_returns + 0.3 * bond_portfolio.returns()
+
+# Calculate the combined total return
+combined_total_returns = (combined_returns + 1).cumprod() - 1
+
+# Calculate final combined total return
+final_combined_total_return = combined_total_returns.iloc[-1]
+
+print(f"Final combined total return: {final_combined_total_return * 100:.2f}%")
+
+# Calculate Sharpe ratio for combined returns
+print(f"Sharpe ratio (combined): {vbt.returns.sharpe_ratio(combined_returns, freq='D')}")
+
+# Calculate Sortino ratio for combined returns
+print(f"Sortino ratio (combined): {vbt.returns.sortino_ratio(combined_returns, freq='D')}")
