@@ -109,8 +109,31 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
         print(b_norm_values)
         print(r2_norm_values)
 
-        # Rest of your exp_growth_and_r2 function
+        signal = b_norm_values +  r2_norm_values
 
+        if signal > signal_threshold:
+            time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
+
+            price = np.log(historical_data.values).ravel()
+
+            observations = np.array([time, price])
+
+            tcs = []
+
+            for _ in range(5):
+                lppls_model = lppls.LPPLS(observations=observations)
+                tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
+                tcs.append(tc)
+
+            tc = np.median(tcs)
+            tc = tc - datetime.toordinal(historical_data.index[-1])
+            
+            if tc > 14:
+                output[i] = 1
+                if i+int(round(tc))-14 < len(output):
+                    output[i+int(round(tc))-14]=-1
+                
+        output[-1] = -1
         return output
 
     except Exception as e:
