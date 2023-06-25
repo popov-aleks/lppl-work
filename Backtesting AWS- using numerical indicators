@@ -79,6 +79,9 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
         b_norm_values = scaler.fit_transform(np.array(b_values).reshape(-1, 1)).ravel()
         r2_norm_values = scaler.fit_transform(np.array(r2_values).reshape(-1, 1)).ravel()
 
+        print(b_norm_values)
+        print(r2_norm_values)
+
         # Iterate through each period again to generate trading signals based on normalized values
         for idx, i in enumerate(range(model_window, len(close), 30)):
             # Get the normalized b and r2 values
