@@ -46,10 +46,14 @@ def func(x, a, b, c):
 # seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
 # Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
 # We sell everything at the end of the window.
+
 def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before_tc=7, max_searches=20):
     try:
         output = np.zeros(len(close))
-        scaler = MinMaxScaler((0, 100)) # Create scaler object
+
+        # Compute all b and r2 values first
+        b_values = []
+        r2_values = []
         for i in range(model_window, len(close), 30):
             historical_data = close.iloc[i-model_window:i]
             historical_data = historical_data.rolling(window = 5).mean().dropna()
@@ -67,11 +71,23 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
             a, b, c = res.x
             r2 = r2_score(log_ydata, fitted_y)
 
-            # Normalize 'b' and 'r2' to be between 0 and 100, and sum them
-            b_norm = scaler.fit_transform([[b]])[0][0]
-            r2_norm = scaler.fit_transform([[r2]])[0][0]
+            b_values.append(b)
+            r2_values.append(r2)
+
+        # Normalize b and r2 values
+        scaler = MinMaxScaler((0, 100)) # Create scaler object
+        b_norm_values = scaler.fit_transform(np.array(b_values).reshape(-1, 1)).ravel()
+        r2_norm_values = scaler.fit_transform(np.array(r2_values).reshape(-1, 1)).ravel()
+
+        # Iterate through each period again to generate trading signals based on normalized values
+        for idx, i in enumerate(range(model_window, len(close), 30)):
+            # Get the normalized b and r2 values
+            b_norm = b_norm_values[idx]
+            r2_norm = r2_norm_values[idx]
+
+            # Calculate the sum of the signals
             signal_sum = b_norm + r2_norm
-            
+
             if signal_sum > signal_threshold:
                 time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
 
