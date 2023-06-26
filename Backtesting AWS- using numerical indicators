@@ -96,11 +96,11 @@ data = data.ffill().bfill()
 
 df_b_values, df_r2_values = analyze_stocks(data)
 
-df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
-df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
+#df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
+#df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
 
-df_b_values = df_b_values.reindex(data.index)
-df_r2_values = df_r2_values.reindex(data.index)
+#df_b_values = df_b_values.reindex(data.index)
+#df_r2_values = df_r2_values.reindex(data.index)
 
 print(str(df_b_values))
 
