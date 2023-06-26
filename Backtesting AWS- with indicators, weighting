@@ -93,6 +93,8 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
     try:
         output = np.zeros(len(close))
         ticker = close.columns[0]
+        hold_flag = False  # this flag will be True when we are in a holding period
+
         for i in range(model_window, len(close), 30):
             # skip if b or r2 values are NaN
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
@@ -121,9 +123,11 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
                 tc = tc - datetime.toordinal(historical_data.index[-1])
                 
                 if tc > 14:
-                    output[i] = 1
-                    if i+int(round(tc))-14 < len(output):
-                        output[i+int(round(tc))-14]=-1
+                    output[i:i+int(round(tc))-14] = 1
+                    hold_flag = True
+                if i+int(round(tc))-14 < len(output):
+                    output[i+int(round(tc))-14] = -1
+                    hold_flag = False
                 
         output[-1] = -1
         return output
@@ -151,18 +155,20 @@ entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'c
 data = data.loc[start_date:end_date]
 entry_signal = entry_signal.loc[start_date:end_date]
 exit_signal = exit_signal.loc[start_date:end_date]
-# Count number of stocks to buy each day
-num_stocks_to_buy = entry_signal.sum(axis=1)
+# Calculate number of buy signals each day
+num_stocks_to_buy_daily = entry_signal.sum(axis=1)
 
 # Initialize an empty dataframe for storing portfolio weights
-weights = pd.DataFrame(index=data.index, columns=data.columns)
+weights = pd.DataFrame(0, index=data.index, columns=data.columns)
 
 # Loop over the entry signals, calculating the weight for each asset each day
 for date in entry_signal.index:
-    for col in entry_signal.columns:
-        if entry_signal.loc[date, col] == 1:
-            weights.loc[date, col] = 1 / num_stocks_to_buy.loc[date]
+    # stocks to buy on this day
+    stocks_to_buy = entry_signal.loc[date]
+    if stocks_to_buy.sum() > 0:  # there is at least one stock to buy on this day
+        weights.loc[date, stocks_to_buy] = 1 / num_stocks_to_buy_daily.loc[date]
 
+# Convert weights into amounts to invest
 weights = weights.mul(initial_capital / data).fillna(0)
 
 # Creating the portfolio with fees
