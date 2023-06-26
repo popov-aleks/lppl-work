@@ -69,7 +69,7 @@ def analyze_stocks(data):
 fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 start_time = time.time()
-data = yf.download(['AAPL', 'MSFT'], start=fetch_start_date, end=end_date)['Close']
+data = yf.download(['AAPL'], start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 df_b_values, df_r2_values = analyze_stocks(data)
 df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
