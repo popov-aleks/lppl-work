@@ -100,8 +100,7 @@ df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
 df_b_values = df_b_values.reindex(data.index)
 df_r2_values = df_r2_values.reindex(data.index)
 
-print(df_b_values)
-print(df_r2_values)
+print(str(df_b_values))
 
 initial_capital = 1000000
 
