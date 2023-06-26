@@ -105,48 +105,48 @@ initial_capital = 1000000
 def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before_tc=7, max_searches=20):
     try:
         output = np.zeros(len(close))
+        for i in range(0, len(close), 30):
+            b_value = df_b_values.loc[close.index].values[i]
+            r2_value = df_r2_values.loc[close.index].values[i]
 
-        b_values = df_b_values.loc[close.index].values
-        r2_values = df_r2_values.loc[close.index].values
-        
-        print(b_values)
-        print(r2_values)
-        
-        b_norm_values = 50 + (100 / 3) * b_values
-        r2_norm_values = 50 + (100 / 3) * r2_values
+            print(b_value)
+            print(r2_value)
 
-        print(b_norm_values)
-        print(r2_norm_values)
+            b_norm_value = 50 + (100 / 3) * b_value
+            r2_norm_value = 50 + (100 / 3) * r2_value
 
-        signal = b_norm_values +  r2_norm_values
+            print(b_norm_value)
+            print(r2_norm_value)
 
-        if signal > signal_threshold:
-            time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
+            signal = b_norm_value +  r2_norm_value
 
-            price = np.log(historical_data.values).ravel()
+            if signal > signal_threshold:
+                time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
 
-            observations = np.array([time, price])
+                price = np.log(historical_data.values).ravel()
 
-            tcs = []
+                observations = np.array([time, price])
 
-            for _ in range(5):
-                lppls_model = lppls.LPPLS(observations=observations)
-                tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
-                tcs.append(tc)
+                tcs = []
 
-            tc = np.median(tcs)
-            tc = tc - datetime.toordinal(historical_data.index[-1])
-            
-            if tc > 14:
-                output[i] = 1
-                if i+int(round(tc))-14 < len(output):
-                    output[i+int(round(tc))-14]=-1
-                
-        output[-1] = -1
-        return output
+                for _ in range(5):
+                    lppls_model = lppls.LPPLS(observations=observations)
+                    tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
+                    tcs.append(tc)
 
-    except Exception as e:
-        print(f"Couldn't process stock. Error: {str(e)}")
+                tc = np.median(tcs)
+                tc = tc - datetime.toordinal(historical_data.index[-1])
+
+                if tc > 14:
+                    output[i] = 1
+                    if i+int(round(tc))-14 < len(output):
+                        output[i+int(round(tc))-14]=-1
+
+            output[-1] = -1
+            return output
+
+        except Exception as e:
+            print(f"Couldn't process stock. Error: {str(e)}")
 
 # Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
