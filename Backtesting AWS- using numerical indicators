@@ -83,7 +83,6 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
         b_values = df_b_values.loc[close.index].values
         r2_values = df_r2_values.loc[close.index].values
 
-        print(b2_values)
         print(b_values)
         print(r2_values)
 
