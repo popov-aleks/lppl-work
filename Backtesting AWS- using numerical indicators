@@ -91,7 +91,6 @@ initial_capital = 1000000
 def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before_tc=7, max_searches=20):
     try:
         output = np.zeros(len(close))
-        print(close)
         ticker = close.columns[0]
         for i in range(model_window, len(close), 30):
             # skip if b or r2 values are NaN
