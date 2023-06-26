@@ -24,7 +24,7 @@ stocks.remove('GEHC')
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 # The start and end dates for the backtest. Data will be fetched from a certain time before that for modelling purposes.
-start_date='2022-10-01'
+start_date='2020-01-01'
 end_date='2023-06-24'
 # Loss function to calculate value of r^2
 def loss(params, x, y):
@@ -79,7 +79,7 @@ def analyze_stocks(data):
 fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 start_time = time.time()
-data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 df_b_values, df_r2_values = analyze_stocks(data)
 
@@ -126,17 +126,7 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
                         output[i+int(round(tc))-14]=-1
                 
         output[-1] = -1
-        signals = pd.DataFrame(output, index=close.index, columns=close.columns)
-
-        # calculate weights based on signals
-        weights = signals.copy()
-        weights.loc[weights[weights.columns[0]] == 1, weights.columns[0]] = 1 / weights[weights[weights.columns[0]] == 1].sum(axis=0)
-        weights[weights == -1] = 0
-
-        # normalize weights to sum up to 1
-        weights = weights.div(weights.sum(axis=1), axis=0).fillna(0)
-
-        return signals, weights
+        return output
     except Exception as e:
         print(f"Couldn't process stock. Error: {str(e)}")
 # Creating the indicator
@@ -152,25 +142,37 @@ BuyIndicator = vbt.IndicatorFactory(
                 keep_pd=True,
                 per_column=True)
 # Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
-signals, weights = BuyIndicator.run(data, model_window=120, signal_threshold = 75, days_before_tc=7, max_searches=20)
-
-entry_signal = signals == 1
-exit_signal = signals == -1
-
+buy_indicator = BuyIndicator.run(data, model_window=120, signal_threshold = 75, days_before_tc=7, max_searches=20)
+entry_signal = buy_indicator.buy_indicator == 1
+exit_signal = buy_indicator.buy_indicator == -1
+# Dropping some extra columns to make it match data
+entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_days_before_tc', 'custom_max_searches'])
 # Cropping the data for the backtest to make it faster
 data = data.loc[start_date:end_date]
 entry_signal = entry_signal.loc[start_date:end_date]
 exit_signal = exit_signal.loc[start_date:end_date]
-weights = weights.loc[start_date:end_date]
+# Count number of stocks to buy each day
+num_stocks_to_buy = entry_signal.sum(axis=1)
 
-# Creating the portfolio. Can change fees as desired
+# Initialize an empty dataframe for storing portfolio weights
+weights = pd.DataFrame(index=data.index, columns=data.columns)
+
+# Loop over the entry signals, calculating the weight for each asset each day
+for date in entry_signal.index:
+    for col in entry_signal.columns:
+        if entry_signal.loc[date, col] == 1:
+            weights.loc[date, col] = 1 / num_stocks_to_buy.loc[date]
+
+weights = weights.mul(initial_capital / data).fillna(0)
+
+# Creating the portfolio with fees
 portfolio = vbt.Portfolio.from_signals(
     data,
     entry_signal,
     exit_signal,
     init_cash=initial_capital,
     size=weights,
-    size_type='targetpercent',
+    size_type='Amount',
     fees=0.001
 )
 # Printing stats- can add extra info about the portfolio at this point
