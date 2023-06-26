@@ -42,10 +42,11 @@ def func(x, a, b, c):
 # We sell everything at the end of the window.
 def analyze_stocks(data):
     model_window=120
-    b_values = []
-    r2_values = []
     dates = []
+    b_r2_values = pd.DataFrame()
     for ticker in data.columns:
+        b_values = []
+        r2_values = []
         df = data[ticker]
         for i in range(model_window, len(df), 30):
             historical_data = df.iloc[i-model_window:i]
@@ -60,12 +61,13 @@ def analyze_stocks(data):
             b_values.append(b)
             r2_values.append(r2)
             dates.append(df.index[i])
-    df_b = pd.DataFrame(b_values, columns=["b"], index=dates)
-    df_r2 = pd.DataFrame(r2_values, columns=["r2"], index=dates)
+        df_b = pd.DataFrame(b_values, columns=[(ticker,"b")], index=dates)
+        df_r2 = pd.DataFrame(r2_values, columns=[(ticker,"r2")], index=dates)
+        df_single_stock = pd.concat([df_b, df_r2], axis=1)
+        b_r2_values = pd.concat([b_r2_values, df_single_stock], axis=1)
     scaler = StandardScaler() 
-    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=["b"], index=dates)
-    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=["r2"], index=dates)
-    return df_b, df_r2
+    b_r2_values = pd.DataFrame(scaler.fit_transform(b_r2_values), columns=b_r2_values.columns, index=b_r2_values.index)
+    return b_r2_values
 fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 start_time = time.time()
@@ -80,14 +82,14 @@ initial_capital = 1000000
 def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before_tc=7, max_searches=20):
     try:
         output = np.zeros(len(close))
+        ticker = close.name[0]
         for i in range(model_window, len(close), 30):
-            print(df_b_values.loc[close.index[i]])
             # skip if b or r2 values are NaN
-            if np.isnan(df_b_values.loc[close.index[i], 'b']) or np.isnan(df_r2_values.loc[close.index[i], 'r2']):
+            if np.isnan(df_b_r2_values.loc[close.index[i], (ticker, 'b')].values[0]) or np.isnan(df_b_r2_values.loc[close.index[i], (ticker, 'r2')].values[0]):
                 continue
             
-            b_value = df_b_values.loc[close.index[i]]
-            r2_value = df_r2_values.loc[close.index[i]]
+            b_value = df_b_r2_values.loc[close.index[i], (ticker, 'b')].values[0]
+            r2_value = df_b_r2_values.loc[close.index[i], (ticker, 'r2')].values[0]
 
 
 
