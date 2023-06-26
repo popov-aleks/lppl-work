@@ -126,7 +126,17 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
                         output[i+int(round(tc))-14]=-1
                 
         output[-1] = -1
-        return output
+        signals = pd.DataFrame(output, index=close.index, columns=close.columns)
+
+        # calculate weights based on signals
+        weights = signals.copy()
+        weights[weights == 1] = 1 / weights.sum(axis=1)
+        weights[weights == -1] = 0
+
+        # normalize weights to sum up to 1
+        weights = weights.div(weights.sum(axis=1), axis=0).fillna(0)
+
+        return signals, weights
     except Exception as e:
         print(f"Couldn't process stock. Error: {str(e)}")
 # Creating the indicator
@@ -142,27 +152,25 @@ BuyIndicator = vbt.IndicatorFactory(
                 keep_pd=True,
                 per_column=True)
 # Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
-buy_indicator = BuyIndicator.run(data, model_window=120, signal_threshold = 75, days_before_tc=7, max_searches=20)
-entry_signal = buy_indicator.buy_indicator == 1
-exit_signal = buy_indicator.buy_indicator == -1
-# Dropping some extra columns to make it match data
-entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_days_before_tc', 'custom_max_searches'])
+signals, weights = BuyIndicator.run(data, model_window=120, signal_threshold = 75, days_before_tc=7, max_searches=20)
+
+entry_signal = signals == 1
+exit_signal = signals == -1
+
 # Cropping the data for the backtest to make it faster
 data = data.loc[start_date:end_date]
 entry_signal = entry_signal.loc[start_date:end_date]
 exit_signal = exit_signal.loc[start_date:end_date]
-# # Assigning an equal proportion of the capital to each stock, investing it all when we get an entr signal
-#num_stocks_to_buy = entry_signal.sum(axis=1)
-#weights = entry_signal.div(num_stocks_to_buy, axis=0)
-#weights = weights.mul(initial_capital / data).fillna(0)
+weights = weights.loc[start_date:end_date]
+
 # Creating the portfolio. Can change fees as desired
 portfolio = vbt.Portfolio.from_signals(
     data,
     entry_signal,
     exit_signal,
     init_cash=initial_capital,
-#    size=weights,
-#    size_type='Amount',
+    size=weights,
+    size_type='targetpercent',
     fees=0.001
 )
 # Printing stats- can add extra info about the portfolio at this point
