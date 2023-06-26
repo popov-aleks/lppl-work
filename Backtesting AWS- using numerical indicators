@@ -81,6 +81,7 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
     try:
         output = np.zeros(len(close))
         for i in range(model_window, len(close), 30):
+            print(df_b_values.loc[close.index[i]])
             # skip if b or r2 values are NaN
             if np.isnan(df_b_values.loc[close.index[i]]) or np.isnan(df_r2_values.loc[close.index[i]]):
                 continue
