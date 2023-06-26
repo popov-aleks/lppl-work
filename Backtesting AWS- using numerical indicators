@@ -94,6 +94,9 @@ data = data.ffill().bfill()
 
 df_b_values, df_r2_values = analyze_stocks(data)
 
+df_b_values = df_b_values.reindex(data.index)
+df_r2_values = df_r2_values.reindex(data.index)
+
 initial_capital = 1000000
 
 def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before_tc=7, max_searches=20):
