@@ -50,49 +50,39 @@ def func(x, a, b, c):
 def analyze_stocks(data):
     model_window=120
 
-    b_values = []
-    r2_values = []
-    dates = []
+    df_b = pd.DataFrame(index=data.index, columns=data.columns)
+    df_r2 = pd.DataFrame(index=data.index, columns=data.columns)
 
     for ticker in data.columns:
+        b_values = []
+        r2_values = []
+        dates = []
         df = data[ticker]
-    
+
         for i in range(model_window, len(df), 30):
             historical_data = df.iloc[i-model_window:i]
             historical_data = historical_data.rolling(window = 5).mean().dropna()
-    
-            if historical_data.isnull().any():
-                print(f"Found NaN values in historical data for {ticker} at index {i}")
-                continue
-    
+
             xdata = (historical_data.index - historical_data.index[0]).days.values
             ydata = historical_data.values
             log_ydata = np.log(ydata + 1).ravel()
-    
+
             res = least_squares(loss, x0=(1, 0.01, 1), args=(xdata, log_ydata))
             fitted_y = func(xdata, *res.x).ravel()
-    
+
             a, b, c = res.x
             r2 = r2_score(log_ydata, fitted_y)
-    
-            if np.isnan(b) or np.isnan(r2):
-                print(f"NaN value found for {ticker} at index {i}")
-                print(f"a = {a}, b = {b}, c = {c}, r2 = {r2}")
-                print(f"xdata = {xdata}")
-                print(f"log_ydata = {log_ydata}")
-                print(f"fitted_y = {fitted_y}")
-                print(f"res = {res}")
 
             b_values.append(b)
             r2_values.append(r2)
             dates.append(df.index[i])
 
-    df_b = pd.DataFrame(b_values, columns=["b"], index=dates)
-    df_r2 = pd.DataFrame(r2_values, columns=["r2"], index=dates)
+        df_b.loc[dates, ticker] = b_values
+        df_r2.loc[dates, ticker] = r2_values
 
     scaler = StandardScaler() 
-    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=["b"], index=dates)
-    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=["r2"], index=dates)
+    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=df_b.index)
+    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=df_r2.index)
 
     return df_b, df_r2
 
