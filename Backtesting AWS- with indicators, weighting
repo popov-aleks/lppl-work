@@ -130,7 +130,7 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
 
         # calculate weights based on signals
         weights = signals.copy()
-        weights.loc[weights == 1] = (1 / weights.loc[weights == 1].sum(axis=1)).values[:, None]
+        weights.loc[weights[weights.columns[0]] == 1, weights.columns[0]] = 1 / weights[weights[weights.columns[0]] == 1].sum(axis=0)
         weights[weights == -1] = 0
 
         # normalize weights to sum up to 1
