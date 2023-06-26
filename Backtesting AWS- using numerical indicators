@@ -102,7 +102,10 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
 
         b_values = df_b_values.loc[close.index].values
         r2_values = df_r2_values.loc[close.index].values
-
+        
+        print(b2_values)
+        print(r2_values)
+        
         b_norm_values = 50 + (100 / 3) * b_values
         r2_norm_values = 50 + (100 / 3) * r2_values
 
@@ -138,19 +141,6 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
 
     except Exception as e:
         print(f"Couldn't process stock. Error: {str(e)}")
-
-# Creating the indicator
-BuyIndicator = vbt.IndicatorFactory(
-    input_names=['close'],
-    param_names=['model_window', 'signal_threshold', 'days_before_tc', 'max_searches'],
-    output_names=['buy_indicator']
-).from_apply_func(exp_growth_and_r2,
-                model_window=90, 
-                signal_threshold = 80, 
-                days_before_tc=14, 
-                max_searches=25,
-                keep_pd=True,
-                per_column=True)
 
 # Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
 buy_indicator = BuyIndicator.run(data, model_window=120, signal_threshold = 80, days_before_tc=7, max_searches=20)
