@@ -41,16 +41,19 @@ def func(x, a, b, c):
 # Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
 # We sell everything at the end of the window.
 def analyze_stocks(data):
-    model_window=120
-    dates = []
-    b_r2_values = pd.DataFrame()
+    model_window = 120
+    df_b = pd.DataFrame()
+    df_r2 = pd.DataFrame()
+    
     for ticker in data.columns:
         b_values = []
         r2_values = []
+        dates = []
+
         df = data[ticker]
         for i in range(model_window, len(df), 30):
             historical_data = df.iloc[i-model_window:i]
-            historical_data = historical_data.rolling(window = 5).mean().dropna()
+            historical_data = historical_data.rolling(window=5).mean().dropna()
             xdata = (historical_data.index - historical_data.index[0]).days.values
             ydata = historical_data.values
             log_ydata = np.log(ydata + 1).ravel()
@@ -61,35 +64,41 @@ def analyze_stocks(data):
             b_values.append(b)
             r2_values.append(r2)
             dates.append(df.index[i])
-        df_b = pd.DataFrame(b_values, columns=[(ticker,"b")], index=dates)
-        df_r2 = pd.DataFrame(r2_values, columns=[(ticker,"r2")], index=dates)
-        df_single_stock = pd.concat([df_b, df_r2], axis=1)
-        b_r2_values = pd.concat([b_r2_values, df_single_stock], axis=1)
+        
+        df_b_temp = pd.DataFrame(b_values, columns=[ticker], index=dates)
+        df_r2_temp = pd.DataFrame(r2_values, columns=[ticker], index=dates)
+        df_b = pd.concat([df_b, df_b_temp], axis=1)
+        df_r2 = pd.concat([df_r2, df_r2_temp], axis=1)
+    
     scaler = StandardScaler() 
-    b_r2_values = pd.DataFrame(scaler.fit_transform(b_r2_values), columns=b_r2_values.columns, index=b_r2_values.index)
-    return b_r2_values
+    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=dates)
+    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=dates)
+    return df_b, df_r2
+
 fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 start_time = time.time()
 data = yf.download(['AAPL', 'MSFT'], start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
-df_b_r2_values = analyze_stocks(data)
-df_b_r2_values = df_b_r2_values.loc[~df_b_r2_values.index.duplicated(keep='first')]
-df_b_r2_values = df_b_r2_values.reindex(data.index)
+df_b_values, df_r2_values = analyze_stocks(data)
+
+df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
+df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
+df_b_values = df_b_values.reindex(data.index)
+df_r2_values = df_r2_values.reindex(data.index)
+
 initial_capital = 1000000
 def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before_tc=7, max_searches=20):
     try:
         output = np.zeros(len(close))
-        ticker = close.name[0]
+        ticker = close.name
         for i in range(model_window, len(close), 30):
             # skip if b or r2 values are NaN
-            print(df_b_r2_values.loc[close.index[i], (ticker, 'b')].values[0])
-            if np.isnan(df_b_r2_values.loc[close.index[i], (ticker, 'b')].values[0]) or np.isnan(df_b_r2_values.loc[close.index[i], (ticker, 'r2')].values[0]):
+            if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
                 continue
             
-            b_value = df_b_r2_values.loc[close.index[i], (ticker, 'b')].values[0]
-            r2_value = df_b_r2_values.loc[close.index[i], (ticker, 'r2')].values[0]
-
+            b_value = df_b_values.loc[close.index[i], ticker]
+            r2_value = df_r2_values.loc[close.index[i], ticker]
 
 
             b_norm_value = 50 + (100 / 3) * b_value
