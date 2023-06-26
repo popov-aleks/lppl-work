@@ -145,8 +145,8 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
             output[-1] = -1
             return output
 
-        except Exception as e:
-            print(f"Couldn't process stock. Error: {str(e)}")
+    except Exception as e:
+        print(f"Couldn't process stock. Error: {str(e)}")
 
 # Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
