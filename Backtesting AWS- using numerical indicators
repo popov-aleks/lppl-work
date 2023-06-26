@@ -78,7 +78,7 @@ def analyze_stocks(data):
 fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 start_time = time.time()
-data = yf.download(['AAPL', 'MSFT'], start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 df_b_values, df_r2_values = analyze_stocks(data)
 
@@ -105,9 +105,8 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
             b_norm_value = 50 + (100 / 3) * b_value
             r2_norm_value = 50 + (100 / 3) * r2_value
 
-            print(b_norm_value)
-
-            signal = b_norm_value + r2_norm_value
+            signal = b_norm_value * 0.8 + r2_norm_value * 0.2
+            print(signal)
             
             if signal > signal_threshold:
                 historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
