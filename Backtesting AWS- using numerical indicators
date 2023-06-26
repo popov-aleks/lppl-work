@@ -105,7 +105,6 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
             r2_norm_value = 50 + (100 / 3) * r2_value
 
             signal = b_norm_value * 0.8 + r2_norm_value * 0.2
-            print(signal)
             
             if signal > signal_threshold:
                 historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
