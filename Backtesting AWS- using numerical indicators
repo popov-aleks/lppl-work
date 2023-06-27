@@ -24,7 +24,7 @@ stocks.remove('GEHC')
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 # The start and end dates for the backtest. Data will be fetched from a certain time before that for modelling purposes.
-start_date='2020-01-01'
+start_date='2022-01-01'
 end_date='2023-06-24'
 # Loss function to calculate value of r^2
 def loss(params, x, y):
