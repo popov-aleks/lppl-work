@@ -265,3 +265,9 @@ print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
+
+# Plot gross exposure of the portfolio over time
+portfolio.gross_exposure(group_by = True).vbt.plot()
+
+# Plot total returns of the portfolio over time
+# portfolio.returns(group_by = True).vbt.plot()
