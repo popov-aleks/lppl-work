@@ -94,7 +94,7 @@ start_time = time.time()
 
 volume_data = yf.download(stocks, start=fetch_start_date, end=end_date)['Volume']
 volume_data = volume_data.ffill().bfill()
-data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 df_b_values, df_r2_values, df_volume_values = analyze_stocks(data, volume_data)
 
