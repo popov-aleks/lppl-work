@@ -38,7 +38,7 @@ days_before_tc_param = 7
 max_searches_param = 20
 
 # Date range
-start_date='2017-01-01'
+start_date='2019-01-01'
 end_date='2020-01-01'
 
 #Helper functions
@@ -97,7 +97,7 @@ fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 
 # Downloading data
-data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 # Creating dataframes for b and r2 values
