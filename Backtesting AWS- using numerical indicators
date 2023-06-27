@@ -121,7 +121,7 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
             b_norm_value = 50 + (100 / 3) * b_value
             r2_norm_value = 50 + (100 / 3) * r2_value
             volume_norm_value = 50 + (100 / 3) * volume_value
-            signal = b_norm_value * 0.7 + r2_norm_value * 0.1 + volume_norm_value * 0.2
+            signal = b_norm_value * 0.75 + r2_norm_value * 0.1 + volume_norm_value * 0.15
             
             if signal > signal_threshold:
                 historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
@@ -158,7 +158,7 @@ BuyIndicator = vbt.IndicatorFactory(
                 keep_pd=True,
                 per_column=True)
 # Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
-buy_indicator = BuyIndicator.run(data, model_window=120, signal_threshold = 65, days_before_tc=7, max_searches=20)
+buy_indicator = BuyIndicator.run(data, model_window=120, signal_threshold = 75, days_before_tc=7, max_searches=20)
 entry_signal = buy_indicator.buy_indicator == 1
 exit_signal = buy_indicator.buy_indicator == -1
 # Dropping some extra columns to make it match data
