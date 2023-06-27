@@ -24,7 +24,7 @@ stocks.remove('GEHC')
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 # The start and end dates for the backtest. Data will be fetched from a certain time before that for modelling purposes.
-start_date='2020-01-01'
+start_date='2022-10-01'
 end_date='2023-06-24'
 # Loss function to calculate value of r^2
 def loss(params, x, y):
@@ -163,6 +163,31 @@ target_weights = target_weights.div(target_weights.sum(axis=1), axis=0)
 
 # Replace NaN values (days with no trades) with 0
 target_weights.fillna(0, inplace=True)
+
+for column in entry_signal.columns:
+    if entry_signal[column].sum() != -exit_signal[column].sum():
+        print(f"Imbalanced entry and exit signals for {column}: {entry_signal[column].sum()} buys, {-exit_signal[column].sum()} sells")
+
+if (target_weights.sum(axis=1) == 0).any():
+    print("There are days with no investments:")
+    print(target_weights.index[target_weights.sum(axis=1) == 0])
+
+# All rows should sum to 1
+if not np.isclose(target_weights.sum(axis=1), 1).all():
+    print("Not all rows in target_weights sum to 1")
+
+# Check for NaN values
+if target_weights.isna().any().any():
+    print("target_weights contains NaN values")
+
+# Check the sparsity of the DataFrame
+sparsity = 1.0 - (target_weights != 0).sum().sum() / np.prod(target_weights.shape)
+print(f"Sparsity of target_weights: {sparsity * 100:.2f}%")
+
+cash = portfolio.cash(group_by=False)
+if (cash < 0).any().any():
+    print("Cash balance went negative at some point")
+cash.vbt.plot().show()
 
 # Creating the portfolio
 portfolio = vbt.Portfolio.from_orders(
