@@ -120,7 +120,6 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
 
             b_norm_value = 50 + (100 / 3) * b_value
             r2_norm_value = 50 + (100 / 3) * r2_value
-            volume_value = df_volume_values.loc[close.index[i], ticker]
             volume_norm_value = 50 + (100 / 3) * volume_value
             signal = b_norm_value * 0.7 + r2_norm_value * 0.1 + volume_norm_value * 0.2
             
