@@ -35,9 +35,9 @@ stocks10 = stocks[:10]
 model_window_param = 120
 b_weight_param = 0.8
 r2_weight_param = 0.2
-signal_threshold_param = 75
+signal_threshold_param = 80
 days_before_tc_param = 7
-max_searches_param = 20
+max_searches_param = 25
 
 # Date range
 start_date='2020-01-01'
