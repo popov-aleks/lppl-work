@@ -25,8 +25,8 @@ stocks.remove('CEG')
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 # The start and end dates for the backtest. Data will be fetched from a certain time before that for modelling purposes.
-start_date='2021-01-01'
-end_date='2022-01-01'
+start_date='2020-06-01'
+end_date='2023-06-27'
 # Loss function to calculate value of r^2
 def loss(params, x, y):
     return func(x, *params) - y
@@ -136,7 +136,7 @@ BuyIndicator = vbt.IndicatorFactory(
                 keep_pd=True,
                 per_column=True)
 # Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
-buy_indicator = BuyIndicator.run(data, model_window=120, signal_threshold = 75, days_before_tc=7, max_searches=20)
+buy_indicator = BuyIndicator.run(data, model_window=120, signal_threshold = 80, days_before_tc=7, max_searches=20)
 entry_signal = buy_indicator.buy_indicator == 1
 exit_signal = buy_indicator.buy_indicator == -1
 # Dropping some extra columns to make it match data
