@@ -58,8 +58,8 @@ def analyze_stocks(data, volume_data):
         for i in range(model_window, len(df), 30):
             historical_data = df.iloc[i-model_window:i]
             historical_data = historical_data.rolling(window=5).mean().dropna()
-            volume_short_term_avg = volume_df.rolling(window=5).mean().dropna()
-            volume_long_term_avg = volume_df.rolling(window=30).mean().dropna()
+            volume_short_term_avg = volume_df.iloc[i-5:i].mean()
+            volume_long_term_avg = volume_df.iloc[i-30:i].mean()
             volume_diff = (volume_short_term_avg - volume_long_term_avg) / volume_long_term_avg * 100
             volume_values.append(volume_diff)
 
