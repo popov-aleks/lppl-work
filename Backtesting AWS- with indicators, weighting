@@ -24,7 +24,7 @@ stocks.remove('GEHC')
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 # The start and end dates for the backtest. Data will be fetched from a certain time before that for modelling purposes.
-start_date='2022-10-01'
+start_date='2020-01-01'
 end_date='2023-06-24'
 # Loss function to calculate value of r^2
 def loss(params, x, y):
@@ -79,7 +79,7 @@ def analyze_stocks(data):
 fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 start_time = time.time()
-data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 df_b_values, df_r2_values = analyze_stocks(data)
 
@@ -93,8 +93,6 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
     try:
         output = np.zeros(len(close))
         ticker = close.columns[0]
-        buy_days = []  # to keep track of days when we buy
-        tcs = []  # to keep track of predicted crash dates
         for i in range(model_window, len(close), 30):
             # skip if b or r2 values are NaN
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
@@ -124,18 +122,8 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
                 
                 if tc > 14:
                     output[i] = 1
-                    buy_days.append(i)  # add the current day to the buy_days list
-                    tcs.append(tc)  # add the current tc value to the tcs list
                     if i+int(round(tc))-14 < len(output):
                         output[i+int(round(tc))-14]=-1
-                        
-            # Go through each buy day and add a sell signal 29 days after
-            for buy_day in buy_days:
-                if buy_day + 29 < len(output):
-                    output[buy_day + 29] = -1
-                    # If tc is still greater than the number of days left until the end of the window, add a buy signal
-                    if tc > 30:
-                        output[buy_day + 30] = 1
                 
         output[-1] = -1
         return output
@@ -163,31 +151,25 @@ entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'c
 data = data.loc[start_date:end_date]
 entry_signal = entry_signal.loc[start_date:end_date]
 exit_signal = exit_signal.loc[start_date:end_date]
-# Calculate number of buy signals each day
-num_stocks_to_buy_daily = entry_signal.sum(axis=1)
+# # Assigning an equal proportion of the capital to each stock, investing it all when we get an entr signal
+# Convert entry and exit signals to target weights
+target_weights = entry_signal.astype(float)
+target_weights[exit_signal] = 0.0
 
-# Initialize an empty dataframe for storing portfolio weights
-weights = pd.DataFrame(0, index=data.index, columns=data.columns)
+# Divide each row by its sum to ensure that the target weights of all stocks sum up to 100% on each day
+target_weights = target_weights.div(target_weights.sum(axis=1), axis=0)
 
-# Loop over the entry signals, calculating the weight for each asset each day
-for date in entry_signal.index:
-    # stocks to buy on this day
-    stocks_to_buy = entry_signal.loc[date]
-    if stocks_to_buy.sum() > 0:  # there is at least one stock to buy on this day
-        weights.loc[date, stocks_to_buy] = 1 / num_stocks_to_buy_daily.loc[date]
+# Replace NaN values (days with no trades) with 0
+target_weights.fillna(0, inplace=True)
 
-# Convert weights into amounts to invest
-weights = weights.mul(initial_capital / data).fillna(0)
-
-# Creating the portfolio with fees
-portfolio = vbt.Portfolio.from_signals(
+# Creating the portfolio
+portfolio = vbt.Portfolio.from_orders(
     data,
-    entry_signal,
-    exit_signal,
+    target_weights,
+    size_type=SizeType.TargetPercent,
+    close_first=True,  # To close existing positions before opening new ones
+    fees=0.001,
     init_cash=initial_capital,
-    size=weights,
-    size_type='Amount',
-    fees=0.001
 )
 # Printing stats- can add extra info about the portfolio at this point
 print(portfolio.stats(metrics = ["start", 
