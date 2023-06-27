@@ -40,8 +40,8 @@ days_before_tc_param = 7
 max_searches_param = 20
 
 # Date range
-start_date='2019-07-01'
-end_date='2020-01-01'
+start_date='2020-01-01'
+end_date='2023-06-27'
 
 #Helper functions
 def loss(params, x, y):
@@ -49,6 +49,23 @@ def loss(params, x, y):
 
 def func(x, a, b, c):
     return a * np.exp(b * x) + c
+
+def compute_fetch_start_date(start_date, model_window):
+    start_date_dt = pd.to_datetime(start_date)
+    business_days = 0
+    current_date = start_date_dt
+    while business_days < model_window:
+        current_date -= pd.DateOffset(days=1)
+        if current_date.dayofweek < 5:  # It's a weekday
+            business_days += 1
+    return current_date.strftime("%Y-%m-%d")
+
+fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
+
+# Downloading data
+data = yf.download(stocks100, start=fetch_start_date, end=end_date)['Close']
+data = data.ffill().bfill()
+
 
 # This is the actual indicator. Currently, it is based on the modelling of the log of 5-day moving average of the price data
 # model_window days before the current date to an exponential curve. This modelling happens every 30 days (but can be modified).
@@ -94,13 +111,6 @@ def analyze_stocks(data):
 
 # Main code
 start_time = time.time()
-
-fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
-fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
-
-# Downloading data
-data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
-data = data.ffill().bfill()
 
 # Creating dataframes for b and r2 values
 df_b_values, df_r2_values = analyze_stocks(data)
@@ -270,4 +280,4 @@ print(f'Time taken: {end_time - start_time} seconds')
 portfolio.gross_exposure(group_by = True).vbt.plot()
 
 # Plot total returns of the portfolio over time
-# portfolio.returns(group_by = True).vbt.plot()
+portfolio.returns(group_by = True).vbt.plot()
