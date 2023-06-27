@@ -41,20 +41,28 @@ def func(x, a, b, c):
 # seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
 # Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
 # We sell everything at the end of the window.
-def analyze_stocks(data):
+def analyze_stocks(data, volume_data):
     model_window = 120
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
+    df_volume = pd.DataFrame()
     
     for ticker in data.columns:
         b_values = []
         r2_values = []
+        volume_values = []
         dates = []
 
         df = data[ticker]
+        volume_df = volume_data[ticker]
         for i in range(model_window, len(df), 30):
             historical_data = df.iloc[i-model_window:i]
             historical_data = historical_data.rolling(window=5).mean().dropna()
+            volume_short_term_avg = volume_df.rolling(window=5).mean().dropna()
+            volume_long_term_avg = volume_df.rolling(window=30).mean().dropna()
+            volume_diff = (volume_short_term_avg - volume_long_term_avg) / volume_long_term_avg * 100
+            volume_values.append(volume_diff)
+
             xdata = (historical_data.index - historical_data.index[0]).days.values
             ydata = historical_data.values
             log_ydata = np.log(ydata + 1).ravel()
@@ -68,20 +76,27 @@ def analyze_stocks(data):
         
         df_b_temp = pd.DataFrame(b_values, columns=[ticker], index=dates)
         df_r2_temp = pd.DataFrame(r2_values, columns=[ticker], index=dates)
+        df_volume_temp = pd.DataFrame(volume_values, columns=[ticker], index=dates)
         df_b = pd.concat([df_b, df_b_temp], axis=1)
         df_r2 = pd.concat([df_r2, df_r2_temp], axis=1)
+        df_volume = pd.concat([df_volume, df_volume_temp], axis=1)
     
     scaler = StandardScaler() 
     df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=dates)
     df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=dates)
-    return df_b, df_r2
+    df_volume = pd.DataFrame(scaler.fit_transform(df_volume), columns=df_volume.columns, index=dates)
+    return df_b, df_r2, df_volume
 
 fetch_start_date_dt = datetime.strptime(start_date, "%Y-%m-%d") - timedelta(days=90)
 fetch_start_date = fetch_start_date_dt.strftime("%Y-%m-%d")
 start_time = time.time()
+
+
+volume_data = yf.download(stocks, start=fetch_start_date, end=end_date)['Volume']
+volume_data = volume_data.ffill().bfill()
 data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
-df_b_values, df_r2_values = analyze_stocks(data)
+df_b_values, df_r2_values, df_volume_values = analyze_stocks(data, volume_data)
 
 df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
 df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
@@ -95,17 +110,19 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
         ticker = close.columns[0]
         for i in range(model_window, len(close), 30):
             # skip if b or r2 values are NaN
-            if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
+            if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]) or np.isnan(df_volume_values.loc[close.index[i], ticker]):
                 continue
             
             b_value = df_b_values.loc[close.index[i], ticker]
             r2_value = df_r2_values.loc[close.index[i], ticker]
+            volume_value = df_volume_values.loc[close.index[i], ticker]
 
 
             b_norm_value = 50 + (100 / 3) * b_value
             r2_norm_value = 50 + (100 / 3) * r2_value
-
-            signal = b_norm_value * 0.8 + r2_norm_value * 0.2
+            volume_value = df_volume_values.loc[close.index[i], ticker]
+            volume_norm_value = 50 + (100 / 3) * volume_value
+            signal = b_norm_value * 0.7 + r2_norm_value * 0.1 + volume_norm_value * 0.2
             
             if signal > signal_threshold:
                 historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
