@@ -169,7 +169,6 @@ portfolio = vbt.Portfolio.from_orders(
     data,
     target_weights,
     size_type=SizeType.TargetPercent,
-    close_first=True,  # To close existing positions before opening new ones
     fees=0.001,
     init_cash=initial_capital,
 )
