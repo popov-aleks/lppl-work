@@ -153,6 +153,8 @@ entry_signal = entry_signal.loc[start_date:end_date]
 exit_signal = exit_signal.loc[start_date:end_date]
 # # Assigning an equal proportion of the capital to each stock, investing it all when we get an entr signal
 # Convert entry and exit signals to target weights
+exit_signal = exit_signal.reindex_like(entry_signal)
+
 target_weights = entry_signal.astype(float)
 target_weights[exit_signal] = 0.0
 
