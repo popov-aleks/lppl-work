@@ -158,7 +158,12 @@ def exp_growth_and_r2(close,
 # Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
     input_names=['close'],
-    param_names=['model_window', 'signal_threshold', 'days_before_tc', 'max_searches'],
+    param_names=['model_window', 'signal_threshold', 'days_before_tc', 'max_searches', 'model_window',
+                'signal_threshold',
+                'b_weight',
+                'r2_weight',
+                'days_before_tc',
+                'max_searches'],
     output_names=['buy_indicator']
 ).from_apply_func(exp_growth_and_r2,
                 model_window=model_window_param,
