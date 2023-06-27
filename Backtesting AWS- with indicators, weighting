@@ -93,8 +93,8 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
     try:
         output = np.zeros(len(close))
         ticker = close.columns[0]
-        hold_flag = False  # this flag will be True when we are in a holding period
-
+        buy_days = []  # to keep track of days when we buy
+        tcs = []  # to keep track of predicted crash dates
         for i in range(model_window, len(close), 30):
             # skip if b or r2 values are NaN
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
@@ -123,11 +123,19 @@ def exp_growth_and_r2(close, model_window=120, signal_threshold=150, days_before
                 tc = tc - datetime.toordinal(historical_data.index[-1])
                 
                 if tc > 14:
-                    output[i:i+int(round(tc))-14] = 1
-                    hold_flag = True
-                if i+int(round(tc))-14 < len(output):
-                    output[i+int(round(tc))-14] = -1
-                    hold_flag = False
+                    output[i] = 1
+                    buy_days.append(i)  # add the current day to the buy_days list
+                    tcs.append(tc)  # add the current tc value to the tcs list
+                    if i+int(round(tc))-14 < len(output):
+                        output[i+int(round(tc))-14]=-1
+                        
+            # Go through each buy day and add a sell signal 29 days after
+            for buy_day in buy_days:
+                if buy_day + 29 < len(output):
+                    output[buy_day + 29] = -1
+                    # If tc is still greater than the number of days left until the end of the window, add a buy signal
+                    if tc > 30:
+                        output[buy_day + 30] = 1
                 
         output[-1] = -1
         return output
