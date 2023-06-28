@@ -121,7 +121,7 @@ df_r2_values = df_r2_values.reindex(data.index)
 
 initial_capital = 1000000
 
-def exp_growth_and_r2(close, 
+def exp_growth_and_r2(close,
                     model_window=model_window_param,
                     signal_threshold=signal_threshold_param,
                     b_weight = b_weight_param,
@@ -131,18 +131,19 @@ def exp_growth_and_r2(close,
 
     try:
         output = np.zeros(len(close))
+        output.iloc[0] = 1
         ticker = close.columns[0]
         for i in range(model_window, len(close), 30):
 
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
                 continue
-            
+
             b_value = df_b_values.loc[close.index[i], ticker]
             r2_value = df_r2_values.loc[close.index[i], ticker]
             b_norm_value = 50 + (100 / 3) * b_value
             r2_norm_value = 50 + (100 / 3) * r2_value
             signal = b_norm_value * b_weight + r2_norm_value * r2_weight
-            
+
             if signal > signal_threshold:
                 historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
                 time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
@@ -156,18 +157,17 @@ def exp_growth_and_r2(close,
                 tc = np.median(tcs)
                 tc = tc - datetime.toordinal(historical_data.index[-1])
 
-                if tc > 90 and (i + 90) < len(output):
-                    output[i + 90] = -1
-                if tc > days_before_tc:
-                    output[i] = 1
-                    if i+int(round(tc))-days_before_tc < len(output):
-                        output[i+int(round(tc))-days_before_tc]=-1
+                if tc < 30:  # Sell the stock when a crash is predicted within 30 days
+                    output[i] = -1
+                    if (i + 30) < len(output):  # Buy it back after 30 days
+                        output[i + 30] = 1
 
-        output[-1] = -1
+        output[-1] = -1  # Sell everything at the end of the window
         return output
 
     except Exception as e:
         print(f"Couldn't process stock. Error: {str(e)}")
+
 
 # Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
