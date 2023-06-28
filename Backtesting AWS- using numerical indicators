@@ -35,7 +35,7 @@ stocks10 = stocks[:10]
 model_window_param = 120
 b_weight_param = 0.8
 r2_weight_param = 0.2
-signal_threshold_param = 80
+signal_threshold_param = 85
 days_before_tc_param = 7
 max_searches_param = 25
 
@@ -86,7 +86,7 @@ def analyze_stocks(data):
         r2_values = []
         dates = []
         df = data[ticker]
-        for i in range(model_window, len(df), 30):
+        for i in range(model_window, len(df), 15):
             historical_data = df.iloc[i-model_window:i]
             historical_data = historical_data.rolling(window=5).mean().dropna()
             xdata = (historical_data.index - historical_data.index[0]).days.values
@@ -156,8 +156,8 @@ def exp_growth_and_r2(close,
                 tc = np.median(tcs)
                 tc = tc - datetime.toordinal(historical_data.index[-1])
 
-                if tc > 60 and (i + 60) < len(output):
-                    output[i + 60] = -1
+                if tc > 90 and (i + 90) < len(output):
+                    output[i + 90] = -1
                 if tc > days_before_tc:
                     output[i] = 1
                     if i+int(round(tc))-days_before_tc < len(output):
