@@ -33,8 +33,8 @@ stocks10 = stocks[:10]
 
 # Parameters
 model_window_param = 120
-b_weight_param = 0.8
-r2_weight_param = 0.2
+b_weight_param = 0.9
+r2_weight_param = 0.1
 signal_threshold_param = 85
 days_before_tc_param = 7
 max_searches_param = 25
@@ -86,7 +86,7 @@ def analyze_stocks(data):
         r2_values = []
         dates = []
         df = data[ticker]
-        for i in range(model_window, len(df), 15):
+        for i in range(model_window, len(df), 30):
             historical_data = df.iloc[i-model_window:i]
             historical_data = historical_data.rolling(window=5).mean().dropna()
             xdata = (historical_data.index - historical_data.index[0]).days.values
