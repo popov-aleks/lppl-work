@@ -35,8 +35,8 @@ stocks10 = stocks[:10]
 model_window_param = 120
 b_weight_param = 0.8
 r2_weight_param = 0.2
-signal_threshold_param = 85
-days_before_tc_param = 7
+signal_threshold_param = 80
+days_before_tc_param = 14
 max_searches_param = 25
 
 # Date range
@@ -149,7 +149,7 @@ def exp_growth_and_r2(close,
                 price = np.log(historical_data.values).ravel()
                 observations = np.array([time, price])
                 tcs = []
-                for _ in range(5):
+                for _ in range(7):
                     lppls_model = lppls.LPPLS(observations=observations)
                     tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
                     tcs.append(tc)
