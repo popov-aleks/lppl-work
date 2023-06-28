@@ -35,9 +35,9 @@ stocks10 = stocks[:10]
 model_window_param = 120
 b_weight_param = 0.8
 r2_weight_param = 0.2
-signal_threshold_param = 85
-days_before_tc_param = 14
-max_searches_param = 25
+signal_threshold_param = 80
+days_before_tc_param = 7
+max_searches_param = 20
 
 # Date range
 start_date='2020-01-01'
@@ -160,7 +160,7 @@ def exp_growth_and_r2(close,
                     output[i] = 1
                     if i+int(round(tc))-14 < len(output):
                         output[i+int(round(tc))-14]=-1
-                
+
         output[-1] = -1
         return output
 
