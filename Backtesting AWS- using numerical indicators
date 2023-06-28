@@ -155,7 +155,9 @@ def exp_growth_and_r2(close,
                     tcs.append(tc)
                 tc = np.median(tcs)
                 tc = tc - datetime.toordinal(historical_data.index[-1])
-                
+
+                if tc > 60 and (i + 60) < len(output):
+                    output[i + 60] = -1
                 if tc > 14:
                     output[i] = 1
                     if i+int(round(tc))-14 < len(output):
