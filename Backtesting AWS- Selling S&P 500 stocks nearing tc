@@ -131,7 +131,7 @@ def exp_growth_and_r2(close,
 
     try:
         output = np.zeros(len(close))
-        output.iloc[0] = 1
+        output[0] = 1
         ticker = close.columns[0]
         for i in range(model_window, len(close), 30):
 
