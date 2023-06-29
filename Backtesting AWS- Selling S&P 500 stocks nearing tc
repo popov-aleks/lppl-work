@@ -197,8 +197,6 @@ buy_indicator = BuyIndicator.run(data,
                                 days_before_tc=days_before_tc_param,
                                 max_searches=max_searches_param)
 
-buy_indicator.buy_indicator.iloc[0, :] = 1
-
 # Getting the entry_signal and exit_signal series
 entry_signal = buy_indicator.buy_indicator == 1
 exit_signal = buy_indicator.buy_indicator == -1
@@ -210,6 +208,8 @@ entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'c
 data = data.loc[start_date:end_date]
 entry_signal = entry_signal.loc[start_date:end_date]
 exit_signal = exit_signal.loc[start_date:end_date]
+
+entry_signal.iloc[0] = True
 
 # Assigning an equal proportion of the capital to each stock, investing it all when we get an entr signal
 #num_stocks_to_buy = entry_signal.sum(axis=1)
