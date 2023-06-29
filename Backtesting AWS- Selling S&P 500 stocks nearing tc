@@ -50,6 +50,8 @@ def loss(params, x, y):
 def func(x, a, b, c):
     return a * np.exp(b * x) + c
 
+start_time = time.time()
+
 def compute_fetch_start_date(start_date, model_window):
     start_date_dt = pd.to_datetime(start_date)
     business_days = 0
@@ -108,9 +110,6 @@ def analyze_stocks(data):
     df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=dates)
     df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=dates)
     return df_b, df_r2
-
-# Main code
-start_time = time.time()
 
 # Creating dataframes for b and r2 values
 df_b_values, df_r2_values = analyze_stocks(data)
