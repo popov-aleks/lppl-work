@@ -197,7 +197,7 @@ buy_indicator = BuyIndicator.run(data,
                                 days_before_tc=days_before_tc_param,
                                 max_searches=max_searches_param)
 
-buy_indicator.buy_indicator.iloc[0] = 1
+buy_indicator.buy_indicator.iloc[0, :] = 1
 
 # Getting the entry_signal and exit_signal series
 entry_signal = buy_indicator.buy_indicator == 1
