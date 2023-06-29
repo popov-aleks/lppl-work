@@ -158,7 +158,7 @@ def exp_growth_and_r2(close,
                 if tc < 30:  # Sell the stock when a crash is predicted within 30 days
                     output[i] = -1
                     if (i + 30) < len(output):  # Buy it back after 30 days
-                        output[i + 30] = 1
+                        output[i + 60] = 1
 
         output[-1] = -1  # Sell everything at the end of the window
         return output
@@ -245,16 +245,12 @@ print(portfolio.stats(metrics = ["start",
                                  "sortino_ratio"], group_by = True))
 
 #Downloading S&P 500 data
-sp500_data = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
+benchmark = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
+benchmark_pf = vbt.Portfolio.from_holding(benchmark)
 
-# Calculate the return for S&P 500 over the entire period
-sp500_returns = sp500_data.pct_change().dropna()
-
-# Calculate the total return of S&P 500
-total_sp500_return = (sp500_returns + 1).prod() - 1
-
-# Print the total return
-print(f"S&P 500 Total Return: {total_sp500_return * 100:.2f}%")
+benchmark_stats = benchmark_pf.stats()
+print("\nBenchmark stats:")
+print(benchmark_stats)
 
 # Get exposure for the entire duration of portfolio
 exposure = portfolio.gross_exposure(group_by=True)
@@ -279,9 +275,3 @@ print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
-
-# Plot gross exposure of the portfolio over time
-portfolio.gross_exposure(group_by = True).vbt.plot()
-
-# Plot total returns of the portfolio over time
-portfolio.returns(group_by = True).vbt.plot()
