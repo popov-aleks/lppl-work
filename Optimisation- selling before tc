@@ -120,6 +120,8 @@ def analyze_stocks(data, model_window = model_window_param):
 initial_capital = 1000000
 
 def exp_growth_and_r2(close,
+                    df_b_values,
+                    df_r2_values
                     model_window=model_window_param,
                     signal_threshold=signal_threshold_param,
                     b_weight = b_weight_param,
@@ -169,7 +171,7 @@ def exp_growth_and_r2(close,
 
 # Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
-    input_names=['close'],
+    input_names=['close', 'df_b_values', 'df_r2_values'],
     param_names=['model_window',
                 'signal_threshold',
                 'b_weight',
@@ -215,7 +217,7 @@ def process_params(params):
         df_b_values = df_b_values.reindex(data.index)
         df_r2_values = df_r2_values.reindex(data.index)
 
-        buy_indicator = BuyIndicator.run(data, **params_dict)
+        buy_indicator = BuyIndicator.run(data, df_b_values, df_r2_values, **params_dict)
 
         entry_signal = buy_indicator.buy_indicator == 1
         exit_signal = buy_indicator.buy_indicator == -1
