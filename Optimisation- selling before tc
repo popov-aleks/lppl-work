@@ -13,6 +13,8 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 from vectorbt.generic.plotting import Scatter
+from multiprocessing import Pool, cpu_count
+
 
 warnings.filterwarnings('ignore')
 
@@ -198,45 +200,52 @@ param_space = {
 b_r2_pairs = [(0.8, 0.2), (0.85, 0.15), (0.9, 0.1), (0.95, 0.05), (1, 0)]
 param_combinations = list(itertools.product(*param_space.values()))
 
-portfolio_list = []
-for params in param_combinations:
+def process_params(params):
     for b, r2 in b_r2_pairs:
         params_dict = dict(zip(param_space.keys(), params))
         params_dict['b_weight'] = b
         params_dict['r2_weight'] = r2
 
-    df_b_values, df_r2_values = analyze_stocks(data, params_dict['model_window'])
-    df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
-    df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
-    df_b_values = df_b_values.reindex(data.index)
-    df_r2_values = df_r2_values.reindex(data.index)
+        df_b_values, df_r2_values = analyze_stocks(data, params_dict['model_window'])
+        df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
+        df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
+        df_b_values = df_b_values.reindex(data.index)
+        df_r2_values = df_r2_values.reindex(data.index)
 
-    buy_indicator = BuyIndicator.run(data, **params_dict)
+        buy_indicator = BuyIndicator.run(data, **params_dict)
 
-    # Getting the entry_signal and exit_signal series
-    entry_signal = buy_indicator.buy_indicator == 1
-    exit_signal = buy_indicator.buy_indicator == -1
-    
-    # Dropping some extra columns to make it match data
-    entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
-    
-    # Cropping the data for the backtest to make it faster
-    data = data.loc[start_date:end_date]
-    entry_signal = entry_signal.loc[start_date:end_date]
-    exit_signal = exit_signal.loc[start_date:end_date]
-    
-    entry_signal.iloc[0] = True
-    
-    # Creating the portfolio. Can change fees as desired
-    portfolio = vbt.Portfolio.from_signals(
-        data,
-        entry_signal,
-        exit_signal,
-        init_cash=initial_capital,
-        fees=0.001
-    )
-    
-    portfolio_list.append((params_dict, portfolio))
+        entry_signal = buy_indicator.buy_indicator == 1
+        exit_signal = buy_indicator.buy_indicator == -1
+
+        entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
+
+        data = data.loc[start_date:end_date]
+        entry_signal = entry_signal.loc[start_date:end_date]
+        exit_signal = exit_signal.loc[start_date:end_date]
+
+        entry_signal.iloc[0] = True
+
+        portfolio = vbt.Portfolio.from_signals(
+            data,
+            entry_signal,
+            exit_signal,
+            init_cash=initial_capital,
+            fees=0.001
+        )
+
+        return (params_dict, portfolio)
+
+# Get the number of CPU cores available
+n_cpu = cpu_count()
+
+# Create a multiprocessing Pool
+p = Pool(n_cpu)
+
+# Use the pool to apply process_params to all parameter combinations in parallel
+portfolio_list = p.map(process_params, param_combinations)
+
+p.close()
+p.join()
 
 # Find the portfolio with the highest total return
 best_portfolio_params, best_portfolio = max(portfolio_list, key=lambda x: x[1].final_value().iloc[-1])
