@@ -40,7 +40,7 @@ days_before_tc_param = 7
 max_searches_param = 25
 
 # Date range
-start_date='2017-01-01'
+start_date='2020-01-01'
 end_date='2023-06-27'
 
 #Helper functions
