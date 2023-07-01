@@ -64,8 +64,9 @@ def compute_fetch_start_date(start_date, model_window):
 
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
+benchmark = yf.download('GSPC', start=start_date, end=end_date)['Adj Close']
 #Downloading S&P 500 data
-benchmark = yf.download(stocks, start=start_date, end=end_date)['Adj Close']
+# benchmark = yf.download(stocks, start=start_date, end=end_date)['Adj Close']
 benchmark_pf = vbt.Portfolio.from_holding(benchmark)
 
 benchmark_stats = benchmark_pf.stats()
