@@ -7,93 +7,191 @@ from scipy.optimize import least_squares
 from sklearn.metrics import r2_score
 import warnings
 from lppls import lppls
-
+import time
+from vectorbt.portfolio.enums import SizeType
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+from vectorbt.generic.plotting import Scatter
 
 warnings.filterwarnings('ignore')
 
+# S&P 500 stocks
 url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
 tables = pd.read_html(url)
 table = tables[0]
 stocks = table['Symbol'].tolist()
 stocks.remove('BRK.B')
 stocks.remove('BF.B')
+stocks.remove('GEHC')
+stocks.remove('CEG')
+stocks.remove('OTIS')
+stocks.remove('CARR')
+stocks.remove('OGN')
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 
-start_date='2022-10-15'
-end_date='2023-06-15'
+# Parameters
+model_window_param = 120
+b_weight_param = 0.9
+r2_weight_param = 0.1
+signal_threshold_param = 80
+buy_back_param = 30
+max_searches_param = 25
+days_after_tc_param = 30
 
+initial_capital = 1000000
 
+# Date range
+start_date='2021-01-01'
+end_date='2022-01-01'
+
+#Helper functions
 def loss(params, x, y):
     return func(x, *params) - y
-
 
 def func(x, a, b, c):
     return a * np.exp(b * x) + c
 
+start_time = time.time()
 
-def exp_growth_and_r2(close, model_window=90, r2_b_threshold=0.001, days_before_tc=14, max_searches=25):
-    try:
-        output = np.zeros(len(close))
-        for i in range(model_window, len(close), 30):
-            historical_data = close.iloc[i-model_window:i]
-            historical_data = historical_data.rolling(window = 5).mean().dropna()
+def compute_fetch_start_date(start_date, model_window):
+    start_date_dt = pd.to_datetime(start_date)
+    business_days = 0
+    current_date = start_date_dt
+    while business_days < model_window:
+        current_date -= pd.DateOffset(days=1)
+        if current_date.dayofweek < 5:  # It's a weekday
+            business_days += 1
+    return current_date.strftime("%Y-%m-%d")
 
-            historical_data.dropna(inplace=True)
+fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
+# Downloading data
+data = yf.download(['AAPL', 'MSFT'], start=fetch_start_date, end=end_date)['Close']
+data = data.ffill().bfill()
+
+
+# This is the actual indicator. Currently, it is based on the modelling of the log of 5-day moving average of the price data
+# model_window days before the current date to an exponential curve. This modelling happens every 30 days (but can be modified).
+# This is slightly arbitrary, but is just a starting point I chose, where the threshold depends on the multiple of the
+# model's exponent and its r^2 value, ie how closely it resembles a faster-than-exponential growth. If the model meets the
+# requirements, we fit it to the LPPL model. I have tried doing the normal curve_fit in this case, but that takes an 
+# incredibly long time. However, there is an lppl library in Python which is very efficient and, having visualised it, 
+# seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
+# Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
+# We sell everything at the end of the window.
+def analyze_stocks(data):
+    model_window = model_window_param
+    df_b = pd.DataFrame()
+    df_r2 = pd.DataFrame()
+
+    for ticker in data.columns:
+        b_values = []
+        r2_values = []
+        dates = []
+        df = data[ticker]
+        for i in range(model_window, len(df), 30):
+            historical_data = df.iloc[i-model_window:i]
+            historical_data = historical_data.rolling(window=5).mean().dropna()
             xdata = (historical_data.index - historical_data.index[0]).days.values
             ydata = historical_data.values
             log_ydata = np.log(ydata + 1).ravel()
-
             res = least_squares(loss, x0=(1, 0.01, 1), args=(xdata, log_ydata))
-
             fitted_y = func(xdata, *res.x).ravel()
-
             a, b, c = res.x
             r2 = r2_score(log_ydata, fitted_y)
-            
-            if r2 * b > r2_b_threshold:
+            b_values.append(b)
+            r2_values.append(r2)
+            dates.append(df.index[i])
+        df_b_temp = pd.DataFrame(b_values, columns=[ticker], index=dates)
+        df_r2_temp = pd.DataFrame(r2_values, columns=[ticker], index=dates)
+        df_b = pd.concat([df_b, df_b_temp], axis=1)
+        df_r2 = pd.concat([df_r2, df_r2_temp], axis=1)
+
+    scaler = StandardScaler() 
+    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=dates)
+    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=dates)
+    return df_b, df_r2
+
+# Creating dataframes for b and r2 values
+df_b_values, df_r2_values = analyze_stocks(data)
+df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
+df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
+df_b_values = df_b_values.reindex(data.index)
+df_r2_values = df_r2_values.reindex(data.index)
+
+initial_capital = 1000000
+
+def exp_growth_and_r2(close,
+                    model_window=model_window_param,
+                    signal_threshold=signal_threshold_param,
+                    b_weight = b_weight_param,
+                    r2_weight = r2_weight_param,
+                    buy_back=buy_back_param,
+                    max_searches=max_searches_param,
+                    days_after_tc=days_after_tc_param):
+
+    try:
+        output = np.zeros(len(close))
+        ticker = close.columns[0]
+        for i in range(model_window, len(close), 30):
+
+            if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
+                continue
+
+            b_value = df_b_values.loc[close.index[i], ticker]
+            r2_value = df_r2_values.loc[close.index[i], ticker]
+            b_norm_value = 50 + (100 / 3) * b_value
+            r2_norm_value = 50 + (100 / 3) * r2_value
+            signal = b_norm_value * b_weight + r2_norm_value * r2_weight
+
+            if signal > signal_threshold:
+                historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
                 time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
-
                 price = np.log(historical_data.values).ravel()
-
                 observations = np.array([time, price])
-
                 tcs = []
-
-                for _ in range(5):
+                for _ in range(7):
                     lppls_model = lppls.LPPLS(observations=observations)
                     tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
                     tcs.append(tc)
-
                 tc = np.median(tcs)
                 tc = tc - datetime.toordinal(historical_data.index[-1])
-                
-                if tc > 14:
-                    output[i] = 1
-                    if i+int(round(tc))-14 < len(output):
-                        output[i+int(round(tc))-14]=-1
-                
-        output[-1] = -1
+
+                if tc < buy_back:  # Sell the stock when a crash is predicted within 30 days
+                    output[i] = -1
+                    if (i + buy_back + days_after_tc) < len(output):  # Buy it back after 30 days
+                        output[i + buy_back + days_after_tc] = 1
+
+        output[-1] = -1  # Sell everything at the end of the window
         return output
-    
+
     except Exception as e:
         print(f"Couldn't process stock. Error: {str(e)}")
 
 
+# Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
     input_names=['close'],
-    param_names=['model_window', 'r2_b_threshold', 'days_before_tc', 'max_searches'],
+    param_names=['model_window',
+                'signal_threshold',
+                'b_weight',
+                'r2_weight',
+                'days_after_tc',
+                'max_searches',
+                'buy_back'],
     output_names=['buy_indicator']
 ).from_apply_func(exp_growth_and_r2,
-                model_window=90, 
-                r2_b_threshold=0.001, 
-                days_before_tc=14, 
-                max_searches=25,
+                model_window=model_window_param,
+                signal_threshold=signal_threshold_param,
+                b_weight = b_weight_param,
+                r2_weight = r2_weight_param,
+                buy_back=buy_back_param,
+                max_searches=max_searches_param,
+                days_after_tc=days_after_tc_param,
                 keep_pd=True,
                 per_column=True)
-
-initial_capital = 1000000
 
 import itertools
 
