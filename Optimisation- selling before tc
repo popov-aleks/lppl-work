@@ -195,27 +195,38 @@ BuyIndicator = vbt.IndicatorFactory(
 
 import itertools
 
-# Define your parameter space
 param_space = {
-    'model_window': [60, 90, 120], 
-    'r2_b_threshold': [0.0005, 0.001, 0.0015],
-    'days_before_tc': [7, 14, 21],
-    'max_searches': [20, 25, 30]
+    'model_window': [90, 120],
+    'signal_threshold': [75, 80, 85],
+    'buy_back': [20, 30, 40],
+    'max_searches': [20, 25],
+    'days_after_tc': [20, 30, 40]
 }
 
-# Generate all combinations of parameters
+b_r2_pairs = [(0.8, 0.2), (0.85, 0.15), (0.9, 0.1), (0.95, 0.05), (1, 0)]
 param_combinations = list(itertools.product(*param_space.values()))
 
-# Generate portfolios for all combinations
 portfolio_list = []
 for params in param_combinations:
     params_dict = dict(zip(param_space.keys(), params))
-    
+
     buy_indicator = BuyIndicator.run(data, **params_dict)
+
+    # Getting the entry_signal and exit_signal series
     entry_signal = buy_indicator.buy_indicator == 1
     exit_signal = buy_indicator.buy_indicator == -1
-
-
+    
+    # Dropping some extra columns to make it match data
+    entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
+    
+    # Cropping the data for the backtest to make it faster
+    data = data.loc[start_date:end_date]
+    entry_signal = entry_signal.loc[start_date:end_date]
+    exit_signal = exit_signal.loc[start_date:end_date]
+    
+    entry_signal.iloc[0] = True
+    
+    # Creating the portfolio. Can change fees as desired
     portfolio = vbt.Portfolio.from_signals(
         data,
         entry_signal,
@@ -223,7 +234,7 @@ for params in param_combinations:
         init_cash=initial_capital,
         fees=0.001
     )
-
+    
     portfolio_list.append((params_dict, portfolio))
 
 # Find the portfolio with the highest total return
