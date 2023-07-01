@@ -176,8 +176,9 @@ BuyIndicator = vbt.IndicatorFactory(
                 'signal_threshold',
                 'b_weight',
                 'r2_weight',
-                'days_before_tc',
-                'max_searches'],
+                'days_after_tc',
+                'max_searches',
+                'buy_back'],
     output_names=['buy_indicator']
 ).from_apply_func(exp_growth_and_r2,
                 model_window=model_window_param,
