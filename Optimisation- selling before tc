@@ -238,7 +238,10 @@ def process_params(params):
             fees=0.001
         )
 
-        return (params_dict, portfolio)
+        # Get portfolio statistics
+        stats_builder = StatsBuilder(portfolio)
+        total_return = stats_builder.total_return()
+        return (params_dict, total_return)
 
 # Get the number of CPU cores available
 n_cpu = cpu_count()
@@ -247,16 +250,19 @@ n_cpu = cpu_count()
 p = Pool(n_cpu)
 
 # Use the pool to apply process_params to all parameter combinations in parallel
-portfolio_list = p.map(process_params, param_combinations)
+results = p.map(process_params, param_combinations)
 
 p.close()
 p.join()
 
-# Find the portfolio with the highest total return
-best_portfolio_params, best_portfolio = max(portfolio_list, key=lambda x: x[1].final_value().iloc[-1])
+# Find the parameter set with the highest total return
+best_params, highest_total_return = max(results, key=lambda x: x[1])
 
 print("Best parameters:")
-print(best_portfolio_params)
+print(best_params)
+
+print("Highest total return:")
+print(highest_total_return)
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
