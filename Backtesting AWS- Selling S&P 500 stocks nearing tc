@@ -271,11 +271,8 @@ print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
 
 #Downloading S&P 500 data
-#benchmark = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
-#benchmark_pf = vbt.Portfolio.from_holding(benchmark)
-
-average_returns = data.pct_change().mean(axis=1).cumsum()
-benchmark_pf = vbt.Portfolio.from_holding(average_returns)
+benchmark = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
+benchmark_pf = vbt.Portfolio.from_holding(benchmark)
 
 benchmark_stats = benchmark_pf.stats()
 print("\nBenchmark stats:")
