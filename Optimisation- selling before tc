@@ -203,42 +203,37 @@ param_space = {
     'days_after_tc': [20, 30, 40]
 }
 
-b_r2_pairs = [(0.8, 0.2), (0.85, 0.15), (0.9, 0.1), (0.95, 0.05), (1, 0)]
-param_combinations = list(itertools.product(*param_space.values()))
+def analyze_stocks_parallel(args):
+    data, model_window = args
+    return analyze_stocks(data, model_window)
 
-portfolio_list = []
-for params in param_combinations:
-    for b, r2 in b_r2_pairs:
-        params_dict = dict(zip(param_space.keys(), params))
-        params_dict['b_weight'] = b
-        params_dict['r2_weight'] = r2
+def exp_growth_and_r2_parallel(args):
+    close, df_b_values, df_r2_values, params_dict = args
+    return exp_growth_and_r2(close, df_b_values, df_r2_values, params_dict)
 
-    buy_indicator = BuyIndicator.run(data, **params_dict)
+def parallel_calculation(data, param_combinations, b_r2_pairs):
+    with Pool(processes=cpu_count()) as pool:
+        args = [(data, model_window_param) for _ in range(cpu_count())]
+        results = pool.map(analyze_stocks_parallel, args)
 
-    # Getting the entry_signal and exit_signal series
-    entry_signal = buy_indicator.buy_indicator == 1
-    exit_signal = buy_indicator.buy_indicator == -1
-    
-    # Dropping some extra columns to make it match data
-    entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
-    
-    # Cropping the data for the backtest to make it faster
-    data = data.loc[start_date:end_date]
-    entry_signal = entry_signal.loc[start_date:end_date]
-    exit_signal = exit_signal.loc[start_date:end_date]
-    
-    entry_signal.iloc[0] = True
-    
-    # Creating the portfolio. Can change fees as desired
-    portfolio = vbt.Portfolio.from_signals(
-        data,
-        entry_signal,
-        exit_signal,
-        init_cash=initial_capital,
-        fees=0.001
-    )
-    
-    portfolio_list.append((params_dict, portfolio))
+    df_b_values, df_r2_values = pd.concat([r[0] for r in results], axis=1), pd.concat([r[1] for r in results], axis=1)
+
+    portfolio_list = []
+
+    for params in param_combinations:
+        for b, r2 in b_r2_pairs:
+            params_dict = dict(zip(param_space.keys(), params))
+            params_dict['b_weight'] = b
+            params_dict['r2_weight'] = r2
+            args = [(data.loc[:, col], df_b_values, df_r2_values, params_dict) for col in data.columns]
+            with Pool(processes=cpu_count()) as pool:
+                results = pool.map(exp_growth_and_r2_parallel, args)
+            for result in results:
+                portfolio_list.append((params_dict, result))
+
+    return portfolio_list
+
+portfolio_list = parallel_calculation(data, param_combinations, b_r2_pairs)
 
 # Find the portfolio with the highest total return
 best_portfolio_params, best_portfolio = max(portfolio_list, key=lambda x: x[1].final_value().iloc[-1])
