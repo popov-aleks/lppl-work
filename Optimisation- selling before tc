@@ -243,3 +243,5 @@ best_portfolio_params, best_portfolio = max(portfolio_list, key=lambda x: x[1].f
 print("Best parameters:")
 print(best_portfolio_params)
 
+end_time = time.time()
+print(f'Time taken: {end_time - start_time} seconds')
