@@ -203,6 +203,9 @@ param_space = {
     'days_after_tc': [20, 30, 40]
 }
 
+param_combinations = list(itertools.product(*param_space.values()))
+b_r2_pairs = [(b_weight_param, r2_weight_param)]
+
 def analyze_stocks_parallel(args):
     data, model_window = args
     return analyze_stocks(data, model_window)
