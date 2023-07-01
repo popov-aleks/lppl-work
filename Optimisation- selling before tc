@@ -44,6 +44,11 @@ days_after_tc_param = 30
 
 initial_capital = 1000000
 
+# Get the number of CPU cores available
+n_cpu = cpu_count()
+
+print(n_cpu)
+
 # Date range
 start_date='2022-01-01'
 end_date='2023-01-01'
