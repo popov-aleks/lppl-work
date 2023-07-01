@@ -186,7 +186,7 @@ BuyIndicator = vbt.IndicatorFactory(
                 r2_weight = r2_weight_param,
                 buy_back=buy_back_param,
                 max_searches=max_searches_param,
-                days_after_tc=days_after_tc_param
+                days_after_tc=days_after_tc_param,
                 keep_pd=True,
                 per_column=True)
 
@@ -205,7 +205,7 @@ entry_signal = buy_indicator.buy_indicator == 1
 exit_signal = buy_indicator.buy_indicator == -1
 
 # Dropping some extra columns to make it match data
-entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', custom_days_after_tc])
+entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
 
 # Cropping the data for the backtest to make it faster
 data = data.loc[start_date:end_date]
