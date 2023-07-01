@@ -239,8 +239,7 @@ def process_params(params):
         )
 
         # Get portfolio statistics
-        stats_builder = StatsBuilder(portfolio)
-        total_return = stats_builder.total_return()
+        total_return = portfolio.total_return()
         return (params_dict, total_return)
 
 # Get the number of CPU cores available
