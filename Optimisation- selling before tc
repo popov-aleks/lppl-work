@@ -43,8 +43,8 @@ days_after_tc_param = 30
 initial_capital = 1000000
 
 # Date range
-start_date='2023-01-01'
-end_date='2023-06-27'
+start_date='2022-01-01'
+end_date='2023-01-01'
 
 #Helper functions
 def loss(params, x, y):
