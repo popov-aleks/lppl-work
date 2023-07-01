@@ -36,8 +36,9 @@ model_window_param = 120
 b_weight_param = 0.9
 r2_weight_param = 0.1
 signal_threshold_param = 80
-days_before_tc_param = 7
+buy_back_param = 30
 max_searches_param = 25
+days_after_tc_param = 30
 
 # Date range
 start_date='2021-01-01'
@@ -65,7 +66,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(['AAPL', 'MSFT'], start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 
@@ -125,8 +126,9 @@ def exp_growth_and_r2(close,
                     signal_threshold=signal_threshold_param,
                     b_weight = b_weight_param,
                     r2_weight = r2_weight_param,
-                    days_before_tc=days_before_tc_param,
-                    max_searches=max_searches_param):
+                    buy_back=buy_back_param,
+                    max_searches=max_searches_param,
+                    days_after_tc=days_after_tc_param):
 
     try:
         output = np.zeros(len(close))
@@ -155,10 +157,10 @@ def exp_growth_and_r2(close,
                 tc = np.median(tcs)
                 tc = tc - datetime.toordinal(historical_data.index[-1])
 
-                if tc < 30:  # Sell the stock when a crash is predicted within 30 days
+                if tc < buy_back:  # Sell the stock when a crash is predicted within 30 days
                     output[i] = -1
-                    if (i + 60) < len(output):  # Buy it back after 30 days
-                        output[i + 60] = 1
+                    if (i + buy_back + days_after_tc) < len(output):  # Buy it back after 30 days
+                        output[i + buy_back + days_after_tc] = 1
 
         output[-1] = -1  # Sell everything at the end of the window
         return output
@@ -180,10 +182,11 @@ BuyIndicator = vbt.IndicatorFactory(
 ).from_apply_func(exp_growth_and_r2,
                 model_window=model_window_param,
                 signal_threshold=signal_threshold_param,
-                b_weight=b_weight_param,
-                r2_weight=r2_weight_param,
-                days_before_tc=days_before_tc_param,
+                b_weight = b_weight_param,
+                r2_weight = r2_weight_param,
+                buy_back=buy_back_param,
                 max_searches=max_searches_param,
+                days_after_tc=days_after_tc_param
                 keep_pd=True,
                 per_column=True)
 
@@ -191,17 +194,18 @@ BuyIndicator = vbt.IndicatorFactory(
 buy_indicator = BuyIndicator.run(data,
                                 model_window=model_window_param,
                                 signal_threshold=signal_threshold_param,
-                                b_weight=b_weight_param,
-                                r2_weight=r2_weight_param,
-                                days_before_tc=days_before_tc_param,
-                                max_searches=max_searches_param)
+                                b_weight = b_weight_param,
+                                r2_weight = r2_weight_param,
+                                buy_back=buy_back_param,
+                                max_searches=max_searches_param,
+                                days_after_tc=days_after_tc_param)
 
 # Getting the entry_signal and exit_signal series
 entry_signal = buy_indicator.buy_indicator == 1
 exit_signal = buy_indicator.buy_indicator == -1
 
 # Dropping some extra columns to make it match data
-entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_days_before_tc', 'custom_max_searches'])
+entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', custom_days_after_tc])
 
 # Cropping the data for the backtest to make it faster
 data = data.loc[start_date:end_date]
