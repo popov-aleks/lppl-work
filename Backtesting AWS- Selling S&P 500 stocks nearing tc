@@ -40,8 +40,8 @@ days_before_tc_param = 7
 max_searches_param = 25
 
 # Date range
-start_date='2020-01-01'
-end_date='2023-06-27'
+start_date='2021-01-01'
+end_date='2022-01-01'
 
 #Helper functions
 def loss(params, x, y):
@@ -266,8 +266,11 @@ print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
 
 #Downloading S&P 500 data
-benchmark = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
-benchmark_pf = vbt.Portfolio.from_holding(benchmark)
+#benchmark = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
+#benchmark_pf = vbt.Portfolio.from_holding(benchmark)
+
+average_returns = data.pct_change().mean(axis=1).cumsum()
+benchmark_pf = vbt.Portfolio.from_holding(average_returns)
 
 benchmark_stats = benchmark_pf.stats()
 print("\nBenchmark stats:")
