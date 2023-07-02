@@ -277,7 +277,6 @@ print(portfolio.stats(benchmark_rets=benchmark_returns, metrics = ["start",
                                  "sharpe_ratio", 
                                  "sortino_ratio"], group_by = True))
 
-Regenerate response
 benchmark_stats = hold_portfolio.stats()
 print("\nBenchmark stats:")
 print(benchmark_stats)
