@@ -50,8 +50,8 @@ n_cpu = cpu_count()
 print(n_cpu)
 
 # Date range
-start_date='2022-01-01'
-end_date='2023-01-01'
+start_date='2021-01-01'
+end_date='2023-07-01'
 
 #Helper functions
 def loss(params, x, y):
@@ -77,7 +77,7 @@ fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 global data
 
 # Downloading data
-data = yf.download(['AAPL', 'MSFT'], start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 
