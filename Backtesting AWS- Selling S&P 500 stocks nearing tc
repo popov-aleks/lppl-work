@@ -41,8 +41,8 @@ max_searches_param = 20
 days_after_tc_param = 40
 
 # Date range
-start_date='2020-01-01'
-end_date='2023-07-01'
+start_date='2017-01-01'
+end_date='2020-01-01'
 
 #Helper functions
 def loss(params, x, y):
