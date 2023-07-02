@@ -200,8 +200,8 @@ import itertools
 
 param_space = {
     'model_window': [90, 120],
-    'signal_threshold': [75, 80, 85],
-    'buy_back': [20, 30, 40, 50],
+    'signal_threshold': [75, 80, 85, 90],
+    'buy_back': [30, 40, 50],
     'max_searches': [15, 20, 25],
     'days_after_tc': [30, 40]
 }
