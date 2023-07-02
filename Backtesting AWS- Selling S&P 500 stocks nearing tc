@@ -231,6 +231,24 @@ portfolio = vbt.Portfolio.from_signals(
     fees=0.001
 )
 
+# Add the benchmark returns to the portfolio stats
+print(portfolio.stats(metrics = ["start", 
+                                 "end", 
+                                 "period", 
+                                 "start_value", 
+                                 "end_value", 
+                                 "total_return", 
+                                 "benchmark_return",
+                                 "max_gross_exposure", 
+                                 "total_fees_paid", 
+                                 "max_dd", 
+                                 "total_trades", 
+                                 "win_rate", 
+                                 "profit_factor", 
+                                 "expectancy", 
+                                 "sharpe_ratio", 
+                                 "sortino_ratio"], group_by = True))
+
 # Get exposure for the entire duration of portfolio
 exposure = portfolio.gross_exposure(group_by=True)
 
@@ -255,27 +273,6 @@ print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
 #Downloading S&P 500 data
 hold_data = data
 hold_portfolio = vbt.Portfolio.from_holding(hold_data, init_cash=initial_capital / hold_data.shape[1], fees=0.001)
-
-# Get the returns of the holding portfolio
-benchmark_returns = hold_portfolio.returns()
-
-# Add the benchmark returns to the portfolio stats
-print(portfolio.stats(benchmark_rets=benchmark_returns, metrics = ["start", 
-                                 "end", 
-                                 "period", 
-                                 "start_value", 
-                                 "end_value", 
-                                 "total_return", 
-                                 "benchmark_return",
-                                 "max_gross_exposure", 
-                                 "total_fees_paid", 
-                                 "max_dd", 
-                                 "total_trades", 
-                                 "win_rate", 
-                                 "profit_factor", 
-                                 "expectancy", 
-                                 "sharpe_ratio", 
-                                 "sortino_ratio"], group_by = True))
 
 benchmark_stats = hold_portfolio.stats()
 print("\nBenchmark stats:")
