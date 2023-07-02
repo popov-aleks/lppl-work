@@ -66,7 +66,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 
@@ -231,24 +231,6 @@ portfolio = vbt.Portfolio.from_signals(
     fees=0.001
 )
 
-# Printing stats- can add extra info about the portfolio at this point
-print(portfolio.stats(metrics = ["start", 
-                                 "end", 
-                                 "period", 
-                                 "start_value", 
-                                 "end_value", 
-                                 "total_return", 
-                                 "benchmark_return",
-                                 "max_gross_exposure", 
-                                 "total_fees_paid", 
-                                 "max_dd", 
-                                 "total_trades", 
-                                 "win_rate", 
-                                 "profit_factor", 
-                                 "expectancy", 
-                                 "sharpe_ratio", 
-                                 "sortino_ratio"], group_by = True))
-
 # Get exposure for the entire duration of portfolio
 exposure = portfolio.gross_exposure(group_by=True)
 
@@ -271,10 +253,32 @@ print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
 print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
 
 #Downloading S&P 500 data
-benchmark = yf.download('^GSPC', start=start_date, end=end_date)['Adj Close']
-benchmark_pf = vbt.Portfolio.from_holding(benchmark)
+hold_data = data
+hold_portfolio = vbt.Portfolio.from_holding(hold_data, init_cash=initial_capital / hold_data.shape[1], fees=0.001)
 
-benchmark_stats = benchmark_pf.stats()
+# Get the returns of the holding portfolio
+benchmark_returns = hold_portfolio.returns()
+
+# Add the benchmark returns to the portfolio stats
+print(portfolio.stats(benchmark_rets=benchmark_returns, metrics = ["start", 
+                                 "end", 
+                                 "period", 
+                                 "start_value", 
+                                 "end_value", 
+                                 "total_return", 
+                                 "benchmark_return",
+                                 "max_gross_exposure", 
+                                 "total_fees_paid", 
+                                 "max_dd", 
+                                 "total_trades", 
+                                 "win_rate", 
+                                 "profit_factor", 
+                                 "expectancy", 
+                                 "sharpe_ratio", 
+                                 "sortino_ratio"], group_by = True))
+
+Regenerate response
+benchmark_stats = hold_portfolio.stats()
 print("\nBenchmark stats:")
 print(benchmark_stats)
 
