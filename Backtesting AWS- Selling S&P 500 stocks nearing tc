@@ -278,8 +278,8 @@ benchmark_stats = hold_portfolio.stats()
 print("\nBenchmark stats:")
 print(benchmark_stats)
 
-print(f"Sharpe ratio: {benchmark_pf.sharpe_ratio(group_by = True, freq='D')}")
-print(f"Sortino ratio: {benchmark_pf.sortino_ratio(group_by = True, freq='D')}")
+print(f"Sharpe ratio: {hold_portfolio.sharpe_ratio(group_by = True, freq='D')}")
+print(f"Sortino ratio: {hold_portfolio.sortino_ratio(group_by = True, freq='D')}")
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
