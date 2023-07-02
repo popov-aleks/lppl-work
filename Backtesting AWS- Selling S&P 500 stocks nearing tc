@@ -272,7 +272,7 @@ print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
 
 #Downloading S&P 500 data
 hold_data = data
-hold_portfolio = vbt.Portfolio.from_holding(hold_data, init_cash=initial_capital / hold_data.shape[1], fees=0.001)
+hold_portfolio = vbt.Portfolio.from_holding(hold_data, init_cash=initial_capital, fees=0.001)
 
 benchmark_stats = hold_portfolio.stats()
 print("\nBenchmark stats:")
