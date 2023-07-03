@@ -13,6 +13,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 from vectorbt.generic.plotting import Scatter
+import os
 
 warnings.filterwarnings('ignore')
 
