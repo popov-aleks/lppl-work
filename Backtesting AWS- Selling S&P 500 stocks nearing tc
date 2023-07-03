@@ -53,6 +53,33 @@ def func(x, a, b, c):
 
 start_time = time.time()
 
+def load_quarterly_revenue(symbol, start_date):
+    # Load the revenue data from the CSV file
+    revenue_df = pd.read_csv(f"{symbol}_quarterly_income_statement.csv")
+
+    # Convert the 'fiscalDateEnding' column to datetime
+    revenue_df['fiscalDateEnding'] = pd.to_datetime(revenue_df['fiscalDateEnding'])
+
+    # Set the index to the 'fiscalDateEnding' column
+    revenue_df.set_index('fiscalDateEnding', inplace=True)
+
+    # Sort the DataFrame by the index (i.e., 'fiscalDateEnding')
+    revenue_df.sort_index(inplace=True)
+
+    # Extract the 'totalRevenue' column
+    revenue = revenue_df['totalRevenue']
+
+    # Select the revenue data for the last quarter before start date
+    last_revenue_before_start = revenue[revenue.index < start_date].last('Q')
+
+    # Select the revenue data for the same quarter in the previous year
+    same_quarter_previous_year = revenue.asof(start_date - pd.DateOffset(years=1))
+
+    if same_quarter_previous_year is None:
+        raise ValueError(f"Not enough historical data for {symbol} to perform analysis starting from {start_date}")
+
+    return last_revenue_before_start, same_quarter_previous_year
+
 def compute_fetch_start_date(start_date, model_window):
     start_date_dt = pd.to_datetime(start_date)
     business_days = 0
@@ -79,16 +106,24 @@ data = data.ffill().bfill()
 # seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
 # Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
 # We sell everything at the end of the window.
-def analyze_stocks(data, model_window):
+
+
+def analyze_stocks(data):
+    model_window = model_window_param
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
 
-    for ticker in data.columns:
+    for i in range(model_window, len(data), 30):
         b_values = []
         r2_values = []
         dates = []
-        df = data[ticker]
-        for i in range(model_window, len(df), 30):
+
+        for ticker in data.columns:
+            df = data[ticker]
+
+            # Load revenue data for the ticker
+            last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[i - model_window])
+
             historical_data = df.iloc[i-model_window:i]
             historical_data = historical_data.rolling(window=5).mean().dropna()
             xdata = (historical_data.index - historical_data.index[0]).days.values
@@ -98,17 +133,29 @@ def analyze_stocks(data, model_window):
             fitted_y = func(xdata, *res.x).ravel()
             a, b, c = res.x
             r2 = r2_score(log_ydata, fitted_y)
+
+            # Calculate inverse of percentage change in revenue
+            revenue_change = (last_revenue_before_start - same_quarter_previous_year) / same_quarter_previous_year
+            revenue_adjustment = 1 / (1 + revenue_change)
+
+            # Adjust b and r2 values based on revenue growth
+            b = b * revenue_adjustment
+            r2 = r2 * revenue_adjustment
+
             b_values.append(b)
             r2_values.append(r2)
-            dates.append(df.index[i])
-        df_b_temp = pd.DataFrame(b_values, columns=[ticker], index=dates)
-        df_r2_temp = pd.DataFrame(r2_values, columns=[ticker], index=dates)
-        df_b = pd.concat([df_b, df_b_temp], axis=1)
-        df_r2 = pd.concat([df_r2, df_r2_temp], axis=1)
 
-    scaler = StandardScaler() 
-    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=dates)
-    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=dates)
+        # Apply standard scaling to b and r2 values for this time period
+        scaler = StandardScaler() 
+        b_values = scaler.fit_transform(np.array(b_values).reshape(-1, 1)).ravel()
+        r2_values = scaler.fit_transform(np.array(r2_values).reshape(-1, 1)).ravel()
+
+        # Add these values to our dataframes
+        df_b_temp = pd.DataFrame(b_values, columns=data.columns, index=[df.index[i]]*len(data.columns))
+        df_r2_temp = pd.DataFrame(r2_values, columns=data.columns, index=[df.index[i]]*len(data.columns))
+        df_b = pd.concat([df_b, df_b_temp])
+        df_r2 = pd.concat([df_r2, df_r2_temp])
+
     return df_b, df_r2
 
 # Creating dataframes for b and r2 values
