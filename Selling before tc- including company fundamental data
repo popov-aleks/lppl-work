@@ -148,6 +148,8 @@ def analyze_stocks(data, model_window):
             # Adjust b and r2 values based on revenue growth
             b = b * revenue_adjustment
 
+            print(type(b))
+
             b_values.append(b)
             r2_values.append(r2)
 
