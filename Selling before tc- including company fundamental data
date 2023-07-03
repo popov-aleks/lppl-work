@@ -55,6 +55,13 @@ start_time = time.time()
 
 def load_quarterly_revenue(symbol, start_date):
     # Load the revenue data from the CSV file
+    filename = f"{symbol}_quarterly_income_statement.csv"
+
+    # Check if the file exists
+    if not os.path.isfile(filename):
+        print(f"File '{filename}' does not exist. Skipping {symbol}.")
+        return None, None
+
     revenue_df = pd.read_csv(f"{symbol}_quarterly_income_statement.csv")
 
     # Convert the 'fiscalDateEnding' column to datetime
