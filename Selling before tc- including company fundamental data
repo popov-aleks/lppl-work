@@ -151,8 +151,6 @@ def analyze_stocks(data, model_window):
             b_values.append(b)
             r2_values.append(r2)
 
-        print(len(b_values), len(data.columns))
-
         # Apply standard scaling to b and r2 values for this time period
         scaler = StandardScaler() 
         b_values = scaler.fit_transform(np.array(b_values).reshape(-1, 1)).ravel()
