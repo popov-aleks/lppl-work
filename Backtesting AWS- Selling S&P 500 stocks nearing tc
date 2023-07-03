@@ -121,6 +121,8 @@ df_r2_values = df_r2_values.reindex(data.index)
 initial_capital = 1000000
 
 def exp_growth_and_r2(close,
+                    df_b_values,
+                    df_r2_values,
                     model_window=model_window_param,
                     signal_threshold=signal_threshold_param,
                     b_weight = b_weight_param,
@@ -166,7 +168,6 @@ def exp_growth_and_r2(close,
 
     except Exception as e:
         print(f"Couldn't process stock. Error: {str(e)}")
-
 
 # Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
