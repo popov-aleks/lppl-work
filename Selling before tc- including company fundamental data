@@ -125,6 +125,8 @@ def analyze_stocks(data, model_window):
 
         for ticker in data.columns:
             df = data[ticker]
+            dates.append(df.index[i])
+
 
             # Load revenue data for the ticker
             last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[i])
