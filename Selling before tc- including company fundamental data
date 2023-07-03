@@ -119,7 +119,7 @@ def analyze_stocks(data, model_window):
             df = data[ticker]
 
             # Load revenue data for the ticker
-            last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[i - model_window])
+            last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[i])
 
             historical_data = df.iloc[i-model_window:i]
             historical_data = historical_data.rolling(window=5).mean().dropna()
@@ -137,7 +137,6 @@ def analyze_stocks(data, model_window):
 
             # Adjust b and r2 values based on revenue growth
             b = b * revenue_adjustment
-            r2 = r2 * revenue_adjustment
 
             b_values.append(b)
             r2_values.append(r2)
