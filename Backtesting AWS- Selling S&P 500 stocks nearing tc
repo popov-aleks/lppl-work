@@ -79,20 +79,17 @@ data = data.ffill().bfill()
 # seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
 # Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
 # We sell everything at the end of the window.
-def analyze_stocks(data, model_window_param):
+def analyze_stocks(data, model_window):
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
 
     for ticker in data.columns:
         b_values = []
         r2_values = []
+        dates = []
         df = data[ticker]
-
-        # Load revenue data for the ticker
-        revenue = load_quarterly_revenue(ticker)
-
-        for i in range(model_window_param, len(df), 30):
-            historical_data = df.iloc[i-model_window_param:i]
+        for i in range(model_window, len(df), 30):
+            historical_data = df.iloc[i-model_window:i]
             historical_data = historical_data.rolling(window=5).mean().dropna()
             xdata = (historical_data.index - historical_data.index[0]).days.values
             ydata = historical_data.values
@@ -101,34 +98,17 @@ def analyze_stocks(data, model_window_param):
             fitted_y = func(xdata, *res.x).ravel()
             a, b, c = res.x
             r2 = r2_score(log_ydata, fitted_y)
-
-            # Identify the nearest previous date in the revenue data
-            analysis_date = df.index[i]
-            closest_previous_date = revenue.index[revenue.index < analysis_date].max()
-
-            if closest_previous_date and pd.notnull(revenue.loc[closest_previous_date]):
-                # Find the date 1 year ago from the closest_previous_date
-                one_year_ago_date = closest_previous_date - pd.DateOffset(years=1)
-
-                if one_year_ago_date in revenue.index and pd.notnull(revenue.loc[one_year_ago_date]):
-                    # Calculate the percentage change in revenue over the past year
-                    revenue_change = (revenue.loc[closest_previous_date] - revenue.loc[one_year_ago_date]) / revenue.loc[one_year_ago_date]
-                    
-                    if revenue_change != 0:
-                        # Adjust b value based on revenue growth
-                        b = b / revenue_change
-
             b_values.append(b)
             r2_values.append(r2)
+            dates.append(df.index[i])
+        df_b_temp = pd.DataFrame(b_values, columns=[ticker], index=dates)
+        df_r2_temp = pd.DataFrame(r2_values, columns=[ticker], index=dates)
+        df_b = pd.concat([df_b, df_b_temp], axis=1)
+        df_r2 = pd.concat([df_r2, df_r2_temp], axis=1)
 
-        df_b[ticker] = pd.Series(b_values, index=df.index[model_window_param::30])
-        df_r2[ticker] = pd.Series(r2_values, index=df.index[model_window_param::30])
-
-    # Standardize b and r2 values
     scaler = StandardScaler() 
-    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=df_b.index)
-    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=df_r2.index)
-
+    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=dates)
+    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=dates)
     return df_b, df_r2
 
 # Creating dataframes for b and r2 values
@@ -190,7 +170,7 @@ def exp_growth_and_r2(close,
 
 # Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
-    input_names=['close'],
+    input_names=['close', 'df_b_values', 'df_r2_values'],
     param_names=['model_window',
                 'signal_threshold',
                 'b_weight',
@@ -212,6 +192,8 @@ BuyIndicator = vbt.IndicatorFactory(
 
 # Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
 buy_indicator = BuyIndicator.run(data,
+                                df_b_values,
+                                df_r2_values,
                                 model_window=model_window_param,
                                 signal_threshold=signal_threshold_param,
                                 b_weight = b_weight_param,
