@@ -114,22 +114,22 @@ data = data.ffill().bfill()
 # seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
 # Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
 # We sell everything at the end of the window.
-def analyze_stocks(data, model_window):
-    df_b = pd.DataFrame(index=data.index)
-    df_r2 = pd.DataFrame(index=data.index)
-
-    for ticker in data.columns:
-        b_values = []
-        r2_values = []
-
-        for i in range(model_window, len(data), 30):
+def analyze_stocks(data, model window = model_window_param):
+    df_b = pd.DataFrame()
+    df_r2 = pd.DataFrame()
+    all_dates = data.index.unique()
+    for i in range(model_window, len(all_dates), 30): # here we loop over dates first
+        date_b_values = []
+        date_r2_values = []
+        tickers = []
+        for ticker in data.columns:
             df = data[ticker]
-
-            # Load revenue data for the ticker
-            last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[i])
-
-            historical_data = df.iloc[i-model_window:i]
+            if all_dates[i] not in df.index:
+                continue
+            historical_data = df.loc[all_dates[i-model_window]:all_dates[i]]
             historical_data = historical_data.rolling(window=5).mean().dropna()
+            if len(historical_data) == 0:
+                continue
             xdata = (historical_data.index - historical_data.index[0]).days.values
             ydata = historical_data.values
             log_ydata = np.log(ydata + 1).ravel()
@@ -137,27 +137,16 @@ def analyze_stocks(data, model_window):
             fitted_y = func(xdata, *res.x).ravel()
             a, b, c = res.x
             r2 = r2_score(log_ydata, fitted_y)
-
-            # Calculate inverse of percentage change in revenue
-            revenue_change = (last_revenue_before_start - same_quarter_previous_year) / same_quarter_previous_year
-            revenue_adjustment = 1 / (1 + revenue_change)
-            # Adjust b and r2 values based on revenue growth
-            b = b * revenue_adjustment
-
-            print(b)
-
-            b_values.append((df.index[i], b))
-            r2_values.append((df.index[i], r2))
-
-        # Apply standard scaling to b and r2 values for this stock
+            date_b_values.append(b)
+            date_r2_values.append(r2)
+            tickers.append(ticker)
         scaler = StandardScaler()
-        b_values_scaled = scaler.fit_transform(np.array([b for _, b in b_values]).reshape(-1, 1)).ravel()
-        r2_values_scaled = scaler.fit_transform(np.array([r2 for _, r2 in r2_values]).reshape(-1, 1)).ravel()
-
-        # Add these values to our dataframes
-        df_b[ticker] = pd.Series({date: b for (date, b), _ in zip(b_values, b_values_scaled)}, name=ticker)
-        df_r2[ticker] = pd.Series({date: r2 for (date, r2), _ in zip(r2_values, r2_values_scaled)}, name=ticker)
-
+        date_b_values_scaled = scaler.fit_transform(np.array(date_b_values).reshape(-1,1)).ravel()
+        date_r2_values_scaled = scaler.fit_transform(np.array(date_r2_values).reshape(-1,1)).ravel()
+        df_b_temp = pd.DataFrame(date_b_values_scaled, columns=[all_dates[i]], index=tickers).T
+        df_r2_temp = pd.DataFrame(date_r2_values_scaled, columns=[all_dates[i]], index=tickers).T
+        df_b = pd.concat([df_b, df_b_temp], axis=0)
+        df_r2 = pd.concat([df_r2, df_r2_temp], axis=0)
     return df_b, df_r2
 
 # Creating dataframes for b and r2 values
