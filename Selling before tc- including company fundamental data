@@ -148,13 +148,12 @@ def analyze_stocks(data, model_window):
             # Adjust b and r2 values based on revenue growth
             b = b * revenue_adjustment
 
-            print(type(b))
-
             b_values.append(b)
             r2_values.append(r2)
 
         # Apply standard scaling to b and r2 values for this time period
         scaler = StandardScaler() 
+        print(b_values)
         b_values = scaler.fit_transform(np.array(b_values).reshape(-1, 1)).ravel()
         r2_values = scaler.fit_transform(np.array(r2_values).reshape(-1, 1)).ravel()
 
