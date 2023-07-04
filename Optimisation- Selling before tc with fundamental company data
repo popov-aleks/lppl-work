@@ -18,6 +18,14 @@ import os
 
 warnings.filterwarnings('ignore')
 
+model_window_param = 100
+b_weight_param = 0.9
+r2_weight_param = 0.1
+signal_threshold_param = 70
+buy_back_param = 40
+max_searches_param = 20
+days_after_tc_param = 40
+
 # S&P 500 stocks
 url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
 tables = pd.read_html(url)
