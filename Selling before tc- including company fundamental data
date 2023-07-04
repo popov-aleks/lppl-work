@@ -138,7 +138,7 @@ def analyze_stocks(data, model_window = model_window_param):
             a, b, c = res.x
             r2 = r2_score(log_ydata, fitted_y)
 
-            last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[day])
+            last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[i])
             # Calculate inverse of percentage change in revenue
             revenue_change = (last_revenue_before_start - same_quarter_previous_year) / same_quarter_previous_year
             revenue_adjustment = 1 / (1 + revenue_change)
