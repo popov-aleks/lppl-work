@@ -78,7 +78,7 @@ def load_quarterly_revenue(symbol, start_date):
     revenue = revenue_df['totalRevenue']
 
     # Select the revenue data for the last quarter before start date
-    last_revenue_before_start = revenue[revenue.index < start_date].last('Q')
+    last_revenue_before_start = revenue[revenue.index < start_date].last('Q').iloc[-1]
 
     # Select the revenue data for the same quarter in the previous year
     same_quarter_previous_year = revenue.asof(start_date - pd.DateOffset(years=1))
