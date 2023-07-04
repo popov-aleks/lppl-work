@@ -114,7 +114,7 @@ data = data.ffill().bfill()
 # seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
 # Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
 # We sell everything at the end of the window.
-def analyze_stocks(data, model window = model_window_param):
+def analyze_stocks(data, model_window = model_window_param):
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
     all_dates = data.index.unique()
