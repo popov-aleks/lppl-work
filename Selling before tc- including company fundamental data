@@ -117,7 +117,8 @@ data = data.ffill().bfill()
 def analyze_stocks(data, model_window = model_window_param):
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
-    for ticker in data.columns:
+
+    for day in range(model_window, len(data), 30):
         b_values = []
         r2_values = []
         dates = []
