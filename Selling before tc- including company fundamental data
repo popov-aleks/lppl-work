@@ -115,18 +115,15 @@ data = data.ffill().bfill()
 # Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
 # We sell everything at the end of the window.
 def analyze_stocks(data, model_window):
-    df_b = pd.DataFrame()
-    df_r2 = pd.DataFrame()
+    df_b = pd.DataFrame(index=data.index)
+    df_r2 = pd.DataFrame(index=data.index)
 
-    for i in range(model_window, len(data), 30):
+    for ticker in data.columns:
         b_values = []
         r2_values = []
-        dates = []
 
-        for ticker in data.columns:
+        for i in range(model_window, len(data), 30):
             df = data[ticker]
-            dates.append(df.index[i])
-
 
             # Load revenue data for the ticker
             last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[i])
@@ -148,19 +145,17 @@ def analyze_stocks(data, model_window):
             print(revenue_change)
             b = b * revenue_adjustment
 
-            b_values.append(b)
-            r2_values.append(r2)
+            b_values.append((df.index[i], b))
+            r2_values.append((df.index[i], r2))
 
-        # Apply standard scaling to b and r2 values for this time period
-        scaler = StandardScaler() 
-        b_values = scaler.fit_transform(np.array(b_values).reshape(-1, 1)).ravel()
-        r2_values = scaler.fit_transform(np.array(r2_values).reshape(-1, 1)).ravel()
+        # Apply standard scaling to b and r2 values for this stock
+        scaler = StandardScaler()
+        b_values_scaled = scaler.fit_transform(np.array([b for _, b in b_values]).reshape(-1, 1)).ravel()
+        r2_values_scaled = scaler.fit_transform(np.array([r2 for _, r2 in r2_values]).reshape(-1, 1)).ravel()
 
         # Add these values to our dataframes
-        df_b_temp = pd.DataFrame(b_values, columns=[ticker], index=dates)
-        df_r2_temp = pd.DataFrame(r2_values, columns=[ticker], index=dates)
-        df_b = pd.concat([df_b, df_b_temp])
-        df_r2 = pd.concat([df_r2, df_r2_temp])
+        df_b[ticker] = pd.Series({date: b for (date, b), _ in zip(b_values, b_values_scaled)}, name=ticker)
+        df_r2[ticker] = pd.Series({date: r2 for (date, r2), _ in zip(r2_values, r2_values_scaled)}, name=ticker)
 
     return df_b, df_r2
 
