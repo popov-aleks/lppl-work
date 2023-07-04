@@ -243,10 +243,10 @@ BuyIndicator = vbt.IndicatorFactory(
 import itertools
 
 param_space = {
-    'model_window': [90, 120],
+    'model_window': [80, 90, 100],
     'signal_threshold': [70, 75, 80, 85],
     'buy_back': [30, 40, 50],
-    'max_searches': [20, 25],
+    'max_searches': [20],
     'days_after_tc': [30, 40]
 }
 
