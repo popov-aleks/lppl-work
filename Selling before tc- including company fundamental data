@@ -117,12 +117,13 @@ data = data.ffill().bfill()
 def analyze_stocks(data, model_window = model_window_param):
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
-
+    scaler = StandardScaler() 
+    
     for day in range(model_window, len(data), 30):
         b_values = []
         r2_values = []
         dates = []
-
+        
         for ticker in data.columns:
             df = data[ticker]
             historical_data = df.iloc[day-model_window:day]
@@ -146,18 +147,18 @@ def analyze_stocks(data, model_window = model_window_param):
             b_values.append(b)
             r2_values.append(r2)
             dates.append(df.index[day])
-
-        df_b_temp = pd.DataFrame(b_values, columns=[ticker], index=dates)
-        df_r2_temp = pd.DataFrame(r2_values, columns=[ticker], index=dates)
-
+            
+        # Apply standard scaling to b and r2 values for this day across all stocks
+        b_values_scaled = scaler.fit_transform(np.array(b_values).reshape(-1, 1)).ravel()
+        r2_values_scaled = scaler.fit_transform(np.array(r2_values).reshape(-1, 1)).ravel()
+            
+        # Add these values to our dataframes
+        df_b_temp = pd.DataFrame(b_values_scaled, columns=[day], index=data.columns)
+        df_r2_temp = pd.DataFrame(r2_values_scaled, columns=[day], index=data.columns)
         df_b = pd.concat([df_b, df_b_temp], axis=1)
         df_r2 = pd.concat([df_r2, df_r2_temp], axis=1)
 
-    scaler = StandardScaler() 
-    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=dates)
-    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=dates)
-
-    return df_b, df_r2
+    return df_b.T, df_r2.T
 
 
 # Creating dataframes for b and r2 values
