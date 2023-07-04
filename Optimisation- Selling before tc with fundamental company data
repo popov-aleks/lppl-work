@@ -289,8 +289,8 @@ def process_params(params):
 
         # Get portfolio statistics
         total_return = portfolio.total_return().iloc[-1]
-        sortino = portfolio.sortino_ratio(group_by = True, freq='D')
-        return (params_dict, total_return, sortino)
+        sharpe = portfolio.sharpe_ratio(group_by = True, freq='D')
+        return (params_dict, total_return, sharpe)
 
 # Get the number of CPU cores available
 n_cpu = cpu_count()
@@ -305,7 +305,7 @@ p.close()
 p.join()
 
 # Find the parameter set with the highest total return
-best_params, highest_total_return, sortino_ratio = max(results, key=lambda x: x[1])
+best_params, highest_total_return, sharpe_ratio = max(results, key=lambda x: x[1])
 
 print("Best parameters:")
 print(best_params)
@@ -314,7 +314,7 @@ print("Highest total return:")
 print(highest_total_return)
 
 print("Sortino ratio:")
-print(sortino_ratio)
+print(sharpe_ratio)
 
 #Downloading S&P 500 data
 data = data.loc[start_date:end_date]
