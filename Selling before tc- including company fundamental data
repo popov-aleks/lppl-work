@@ -144,7 +144,7 @@ def analyze_stocks(data, model_window):
             # Calculate inverse of percentage change in revenue
             revenue_change = (last_revenue_before_start - same_quarter_previous_year) / same_quarter_previous_year
             revenue_adjustment = 1 / (1 + revenue_change)
-            b.to_float()
+            b = float(b)
             # Adjust b and r2 values based on revenue growth
             b = b * revenue_adjustment
 
