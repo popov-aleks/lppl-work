@@ -117,16 +117,14 @@ data = data.ffill().bfill()
 def analyze_stocks(data, model_window = model_window_param):
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
-    scaler = StandardScaler() 
-    
-    for i in range(model_window, len(data), 30):
+    for ticker in data.columns:
         b_values = []
         r2_values = []
         dates = []
-        
+
         for ticker in data.columns:
             df = data[ticker]
-            historical_data = df.iloc[i-model_window:i]
+            historical_data = df.iloc[day-model_window:day]
             historical_data = historical_data.rolling(window=5).mean().dropna()
             xdata = (historical_data.index - historical_data.index[0]).days.values
             ydata = historical_data.values
@@ -137,7 +135,7 @@ def analyze_stocks(data, model_window = model_window_param):
             r2 = r2_score(log_ydata, fitted_y)
 
             # Load revenue data for the ticker
-            last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[i])
+            last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[day])
             # Calculate inverse of percentage change in revenue
             revenue_change = (last_revenue_before_start - same_quarter_previous_year) / same_quarter_previous_year
             revenue_adjustment = 1 / (1 + revenue_change)
@@ -146,19 +144,20 @@ def analyze_stocks(data, model_window = model_window_param):
 
             b_values.append(b)
             r2_values.append(r2)
-            dates.append(df.index[i])
-            
-        # Apply standard scaling to b and r2 values for this day across all stocks
-        b_values_scaled = scaler.fit_transform(np.array(b_values).reshape(-1, 1)).ravel()
-        r2_values_scaled = scaler.fit_transform(np.array(r2_values).reshape(-1, 1)).ravel()
-            
-        # Add these values to our dataframes
-        df_b_temp = pd.DataFrame(b_values_scaled, columns=[i], index=data.columns)
-        df_r2_temp = pd.DataFrame(r2_values_scaled, columns=[i], index=data.columns)
+            dates.append(df.index[day])
+
+        df_b_temp = pd.DataFrame(b_values, columns=[ticker], index=dates)
+        df_r2_temp = pd.DataFrame(r2_values, columns=[ticker], index=dates)
+
         df_b = pd.concat([df_b, df_b_temp], axis=1)
         df_r2 = pd.concat([df_r2, df_r2_temp], axis=1)
 
-    return df_b.T, df_r2.T 
+    scaler = StandardScaler() 
+    df_b = pd.DataFrame(scaler.fit_transform(df_b), columns=df_b.columns, index=dates)
+    df_r2 = pd.DataFrame(scaler.fit_transform(df_r2), columns=df_r2.columns, index=dates)
+
+    return df_b, df_r2
+
 
 # Creating dataframes for b and r2 values
 df_b_values, df_r2_values = analyze_stocks(data, model_window_param)
