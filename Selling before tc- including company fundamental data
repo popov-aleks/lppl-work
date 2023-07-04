@@ -153,8 +153,8 @@ def analyze_stocks(data, model_window = model_window_param):
         r2_values_scaled = scaler.fit_transform(np.array(r2_values).reshape(-1, 1)).ravel()
             
         # Add these values to our dataframes
-        df_b_temp = pd.DataFrame(b_values_scaled, columns=[day], index=data.columns)
-        df_r2_temp = pd.DataFrame(r2_values_scaled, columns=[day], index=data.columns)
+        df_b_temp = pd.DataFrame(b_values_scaled, columns=[i], index=data.columns)
+        df_r2_temp = pd.DataFrame(r2_values_scaled, columns=[i], index=data.columns)
         df_b = pd.concat([df_b, df_b_temp], axis=1)
         df_r2 = pd.concat([df_r2, df_r2_temp], axis=1)
 
