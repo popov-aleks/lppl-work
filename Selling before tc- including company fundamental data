@@ -29,6 +29,7 @@ stocks.remove('CEG')
 stocks.remove('OTIS')
 stocks.remove('CARR')
 stocks.remove('OGN')
+stocks.re
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 
@@ -42,7 +43,7 @@ max_searches_param = 20
 days_after_tc_param = 40
 
 # Date range
-start_date='2017-01-01'
+start_date='2020-01-01'
 end_date='2023-07-01'
 
 #Helper functions
