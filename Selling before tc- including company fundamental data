@@ -145,6 +145,7 @@ def analyze_stocks(data, model_window):
             revenue_change = (last_revenue_before_start - same_quarter_previous_year) / same_quarter_previous_year
             revenue_adjustment = 1 / (1 + revenue_change)
             # Adjust b and r2 values based on revenue growth
+            print(revenue_change)
             b = b * revenue_adjustment
 
             b_values.append(b)
