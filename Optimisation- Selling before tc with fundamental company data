@@ -313,8 +313,8 @@ print("Highest total return:")
 print(highest_total_return)
 
 #Downloading S&P 500 data
-hold_data = data
 data = data.loc[start_date:end_date]
+hold_data = data
 hold_portfolio = vbt.Portfolio.from_holding(hold_data, init_cash=initial_capital, fees=0.001)
 
 benchmark_stats = hold_portfolio.stats()
