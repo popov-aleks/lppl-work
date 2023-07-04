@@ -93,7 +93,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(['AAPL', 'MSFT', start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 
@@ -303,6 +303,20 @@ print(best_params)
 
 print("Highest total return:")
 print(highest_total_return)
+
+#Downloading S&P 500 data
+hold_data = data
+hold_portfolio = vbt.Portfolio.from_holding(hold_data, init_cash=initial_capital, fees=0.001)
+
+benchmark_stats = hold_portfolio.stats()
+print("\nBenchmark stats:")
+print(benchmark_stats)
+
+print(f"Sharpe ratio: {hold_portfolio.sharpe_ratio(group_by = True, freq='D')}")
+print(f"Sortino ratio: {hold_portfolio.sortino_ratio(group_by = True, freq='D')}")
+
+end_time = time.time()
+print(f'Time taken: {end_time - start_time} seconds')
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
