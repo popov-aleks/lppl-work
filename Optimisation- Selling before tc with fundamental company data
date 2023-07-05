@@ -44,7 +44,7 @@ stocks10 = stocks[:10]
 
 # Date range
 start_date='2021-01-01'
-end_date='2022-07-01'
+end_date='2023-07-01'
 
 #Helper functions
 def loss(params, x, y):
@@ -102,7 +102,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(['AAPL', 'MSFT'], start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks100, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 
@@ -251,7 +251,7 @@ param_space = {
     'days_after_tc': [30, 40]
 }
 
-b_r2_pairs = [(0.8, 0.2), (0.85, 0.15), (0.9, 0.1), (0.95, 0.05), (1, 0)]
+b_r2_pairs = [(0.75, 0.25), (0.8, 0.2), (0.85, 0.15), (0.9, 0.1), (0.95, 0.05)]
 param_combinations = list(itertools.product(*param_space.values()))
 
 def process_params(params):
