@@ -247,7 +247,7 @@ param_space = {
     'model_window': [70, 80, 90, 100],
     'signal_threshold': [65, 70, 75, 80],
     'buy_back': [30, 40, 50],
-    'max_searches': [20],
+    'max_searches': [20, 25],
     'days_after_tc': [30, 40]
 }
 
