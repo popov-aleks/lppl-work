@@ -304,18 +304,6 @@ results = p.map(process_params, param_combinations)
 p.close()
 p.join()
 
-# Find the parameter set with the highest total return
-best_params, highest_total_return, sharpe_ratio = max(results, key=lambda x: x[1])
-
-print("Best parameters:")
-print(best_params)
-
-print("Highest total return:")
-print(highest_total_return)
-
-print("Sortino ratio:")
-print(sharpe_ratio)
-
 #Downloading S&P 500 data
 data = data.loc[start_date:end_date]
 hold_data = data
@@ -328,8 +316,28 @@ print(benchmark_stats)
 print(f"Sharpe ratio: {hold_portfolio.sharpe_ratio(group_by = True, freq='D')}")
 print(f"Sortino ratio: {hold_portfolio.sortino_ratio(group_by = True, freq='D')}")
 
-end_time = time.time()
-print(f'Time taken: {end_time - start_time} seconds')
+highest_total_return = nlargest(5, results, key=lambda x: x[1])
+highest_sharpe_ratio = nlargest(5, results, key=lambda x: x[2])
+
+print("Top 5 parameter combinations by highest total return:")
+for params, total_return, sharpe_ratio in highest_total_return:
+    print(f"Parameters: {params}, Total Return: {total_return}, Sharpe Ratio: {sharpe_ratio}")
+
+print("Top 5 parameter combinations by highest sharpe ratio:")
+for params, total_return, sharpe_ratio in highest_sharpe_ratio:
+    print(f"Parameters: {params}, Total Return: {total_return}, Sharpe Ratio: {sharpe_ratio}")
+
+# Calculate holding portfolio metrics
+hold_sharpe = hold_portfolio.sharpe_ratio(group_by=True, freq='D')
+hold_total_return = hold_portfolio.total_return().iloc[-1]
+
+better_than_hold = [result for result in results if result[1] > hold_total_return and result[2] > hold_sharpe]
+print("\nParameter combinations better than holding portfolio in both return and sharpe ratio:")
+for params, total_return, sharpe_ratio in better_than_hold:
+    print(f"Parameters: {params}, Total Return: {total_return}, Sharpe Ratio: {sharpe_ratio}")
+
+# [rest of your code here]
+# ...
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
