@@ -33,13 +33,13 @@ stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 
 # Parameters
-model_window_param = 100
+model_window_param = 70
 b_weight_param = 0.75
 r2_weight_param = 0.25
 signal_threshold_param = 65
-buy_back_param = 50
-max_searches_param = 25
-days_after_tc_param = 40
+buy_back_param = 30
+max_searches_param = 20
+days_after_tc_param = 30
 
 # Date range
 start_date='2020-01-01'
@@ -141,7 +141,7 @@ def analyze_stocks(data, model_window = model_window_param):
             last_revenue_before_start, same_quarter_previous_year = load_quarterly_revenue(ticker, df.index[i])
             # Calculate inverse of percentage change in revenue
             revenue_change = (last_revenue_before_start - same_quarter_previous_year) / same_quarter_previous_year
-            revenue_adjustment = 1 / (1 + 0.5 * revenue_change)
+            revenue_adjustment = 1 / (1 + revenue_change)
             # Adjust b and r2 values based on revenue growth
             b = b * revenue_adjustment
 
