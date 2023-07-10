@@ -17,20 +17,13 @@ import os
 
 warnings.filterwarnings('ignore')
 
-# S&P 500 stocks
-url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
-tables = pd.read_html(url)
-table = tables[0]
-stocks = table['Symbol'].tolist()
-stocks.remove('BRK.B')
-stocks.remove('BF.B')
-stocks.remove('GEHC')
-stocks.remove('CEG')
-stocks.remove('OTIS')
-stocks.remove('CARR')
-stocks.remove('OGN')
-stocks100 = stocks[:100]
-stocks10 = stocks[:10]
+stocks_with_sectors = table[['Symbol', 'GICS Sector']]
+stocks_with_sectors = stocks_with_sectors[~stocks_with_sectors['Symbol'].isin(['BRK.B', 'BF.B', 'GEHC', 'CEG', 'OTIS', 'CARR', 'OGN'])]
+
+# Keep the sector data for later use
+sectors = {row['Symbol']: row['GICS Sector'] for _, row in stocks_with_sectors.iterrows()}
+
+stocks = stocks_with_sectors['Symbol'].tolist()
 
 # Parameters
 model_window_param = 70
@@ -193,7 +186,7 @@ def exp_growth_and_r2(close,
             r2_norm_value = 50 + (50 / 3) * r2_value
             signal = b_norm_value * b_weight + r2_norm_value * r2_weight
 
-            if signal > signal_threshold:
+            if signal > signal_threshold and close.iloc[i, 0] > close.iloc[i - model_window, 0]:
                 historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
                 time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
                 price = np.log(historical_data.values).ravel()
