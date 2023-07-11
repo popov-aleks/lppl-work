@@ -314,7 +314,7 @@ sector_portfolios = {}
 for sector in sector_data.keys():
     
     # Fetch the price data for the stocks in the current sector
-    sector_data = data.loc[:, sector_stocks[sector]]
+    sector_data = data.loc[:, sector_data[sector]]
     
     # Create a portfolio where we simply hold the stocks in the current sector
     sector_portfolios[sector] = vbt.Portfolio.from_holding(sector_data, init_cash=initial_capital, fees=0.001)
