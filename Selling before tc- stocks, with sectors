@@ -163,6 +163,8 @@ sector_data = {
     for sector in stocks_with_sectors['GICS Sector'].unique()
 }
 
+sector_data = {k: v for k, v in sector_data.items() if not v.empty}
+
 # Creating dataframes for b and r2 values for each sector
 sector_b_values = {}
 sector_r2_values = {}
