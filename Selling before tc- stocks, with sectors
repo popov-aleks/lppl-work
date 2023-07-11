@@ -311,7 +311,7 @@ for sector in sector_portfolio:
 sector_portfolios = {}
 
 # Create a portfolio for each sector
-for sector in sector_stocks.keys():
+for sector in sector_data.keys():
     
     # Fetch the price data for the stocks in the current sector
     sector_data = data.loc[:, sector_stocks[sector]]
