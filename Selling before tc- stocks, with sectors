@@ -42,8 +42,8 @@ max_searches_param = 20
 days_after_tc_param = 30
 
 # Date range
-start_date='2022-01-01'
-end_date='2023-01-01'
+start_date='2020-01-01'
+end_date='2023-07-10'
 
 #Helper functions
 def loss(params, x, y):
@@ -101,7 +101,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 print(data.columns)
