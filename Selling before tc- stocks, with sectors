@@ -306,6 +306,10 @@ for sector in sector_portfolio:
                                                     "win_rate", 
                                                     "profit_factor", 
                                                     "expectancy"]))
+    print(f"\nStats for {sector}:")
+    print(sector_stats[sector])
+    print(f"Sharpe ratio: {sector_portfolio[sector].sharpe_ratio(group_by = True, freq='D')}")
+    print(f"Sortino ratio: {sector_portfolio[sector].sortino_ratio(group_by = True, freq='D')}")
 
 #Downloading S&P 500 data
 sector_portfolios = {}
@@ -314,10 +318,10 @@ sector_portfolios = {}
 for sector in sector_data.keys():
     
     # Fetch the price data for the stocks in the current sector
-    sector_data = data.loc[:, sector_data[sector]]
+    sector_df = sector_data[sector]
     
     # Create a portfolio where we simply hold the stocks in the current sector
-    sector_portfolios[sector] = vbt.Portfolio.from_holding(sector_data, init_cash=initial_capital, fees=0.001)
+    sector_portfolios[sector] = vbt.Portfolio.from_holding(sector_df, init_cash=initial_capital, fees=0.001)
 
 # Create a dictionary to hold the stats for each sector
 sector_stats = {}
