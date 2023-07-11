@@ -26,6 +26,8 @@ stocks_with_sectors = stocks_with_sectors[~stocks_with_sectors['Symbol'].isin(['
 sectors = {row['Symbol']: row['GICS Sector'] for _, row in stocks_with_sectors.iterrows()}
 
 stocks = stocks_with_sectors['Symbol'].tolist()
+stocks100 = stocks[:100]
+stocks10 = stocks[:10]
 
 # Parameters
 model_window_param = 70
@@ -96,7 +98,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks10, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 
