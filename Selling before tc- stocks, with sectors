@@ -294,10 +294,7 @@ for sector in sector_portfolio:
                                                     "total_trades", 
                                                     "win_rate", 
                                                     "profit_factor", 
-                                                    "expectancy", 
-                                                    "sharpe_ratio", 
-                                                    "sortino_ratio"], 
-                                         group_by = True))
+                                                    "expectancy"]))
 
 #Downloading S&P 500 data
 sector_portfolios = {}
