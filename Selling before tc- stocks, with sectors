@@ -306,8 +306,7 @@ for sector in sector_portfolio:
                                                     "win_rate", 
                                                     "profit_factor", 
                                                     "expectancy"]))
-    print(f"\nStats for {sector}:")
-    print(sector_stats[sector])
+
     print(f"Sharpe ratio: {sector_portfolio[sector].sharpe_ratio(group_by = True, freq='D')}")
     print(f"Sortino ratio: {sector_portfolio[sector].sortino_ratio(group_by = True, freq='D')}")
 
