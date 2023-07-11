@@ -277,6 +277,7 @@ for sector in sector_buy_indicator:
     entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
     sector_entry_signal[sector] = entry_signal
     sector_exit_signal[sector] = exit_signal
+    sector_entry_signal[sector].iloc[0] = True
 
 # Creating the portfolio for each sector
 sector_portfolio = {}
