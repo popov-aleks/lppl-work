@@ -150,14 +150,20 @@ def analyze_stocks(data, model_window = model_window_param):
         df_r2 = pd.concat([df_r2, df_r2_temp], axis=0)
     return df_b, df_r2
 
+sector_data = {sector: data[stocks_with_sectors[stocks_with_sectors['GICS Sector'] == sector]['Symbol'].tolist()] for sector in stocks_with_sectors['GICS Sector'].unique()}
 
-
-# Creating dataframes for b and r2 values
-df_b_values, df_r2_values = analyze_stocks(data, model_window_param)
-df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
-df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
-df_b_values = df_b_values.reindex(data.index)
-df_r2_values = df_r2_values.reindex(data.index)
+# Creating dataframes for b and r2 values for each sector
+sector_b_values = {}
+sector_r2_values = {}
+for sector in sector_data:
+    df_b_values, df_r2_values = analyze_stocks(sector_data[sector], model_window_param)
+    df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
+    df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
+    df_b_values = df_b_values.reindex(data.index)
+    df_r2_values = df_r2_values.reindex(data.index)
+    
+    sector_b_values[sector] = df_b_values
+    sector_r2_values[sector] = df_r2_values
 
 initial_capital = 1000000
 
@@ -233,96 +239,89 @@ BuyIndicator = vbt.IndicatorFactory(
                 per_column=True)
 
 # Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
-buy_indicator = BuyIndicator.run(data,
-                                df_b_values,
-                                df_r2_values,
-                                model_window=model_window_param,
-                                signal_threshold=signal_threshold_param,
-                                b_weight = b_weight_param,
-                                r2_weight = r2_weight_param,
-                                buy_back=buy_back_param,
-                                max_searches=max_searches_param,
-                                days_after_tc=days_after_tc_param)
+sector_buy_indicator = {}
+for sector in sector_data:
+    buy_indicator = BuyIndicator.run(sector_data[sector],
+                                     sector_b_values[sector],
+                                     sector_r2_values[sector],
+                                     model_window=model_window_param,
+                                     signal_threshold=signal_threshold_param,
+                                     b_weight = b_weight_param,
+                                     r2_weight = r2_weight_param,
+                                     buy_back=buy_back_param,
+                                     max_searches=max_searches_param,
+                                     days_after_tc=days_after_tc_param)
+    sector_buy_indicator[sector] = buy_indicator
 
-# Getting the entry_signal and exit_signal series
-entry_signal = buy_indicator.buy_indicator == 1
-exit_signal = buy_indicator.buy_indicator == -1
+# Getting the entry_signal and exit_signal series for each sector
+sector_entry_signal = {}
+sector_exit_signal = {}
+for sector in sector_buy_indicator:
+    entry_signal = sector_buy_indicator[sector].buy_indicator == 1
+    exit_signal = sector_buy_indicator[sector].buy_indicator == -1
+    
+    # Dropping some extra columns to make it match data
+    entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
+    sector_entry_signal[sector] = entry_signal
+    sector_exit_signal[sector] = exit_signal
 
-# Dropping some extra columns to make it match data
-entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
+# Creating the portfolio for each sector
+sector_portfolio = {}
+for sector in sector_data:
+    sector_portfolio[sector] = vbt.Portfolio.from_signals(
+        sector_data[sector],
+        sector_entry_signal[sector],
+        sector_exit_signal[sector],
+        init_cash=initial_capital,
+        fees=0.001
+    )
 
-# Cropping the data for the backtest to make it faster
-data = data.loc[start_date:end_date]
-entry_signal = entry_signal.loc[start_date:end_date]
-exit_signal = exit_signal.loc[start_date:end_date]
-
-entry_signal.iloc[0] = True
-
-# Assigning an equal proportion of the capital to each stock, investing it all when we get an entr signal
-#num_stocks_to_buy = entry_signal.sum(axis=1)
-#weights = entry_signal.div(num_stocks_to_buy, axis=0)
-#weights = weights.mul(initial_capital / data).fillna(0)
-
-# Creating the portfolio. Can change fees as desired
-portfolio = vbt.Portfolio.from_signals(
-    data,
-    entry_signal,
-    exit_signal,
-    init_cash=initial_capital,
-#    size=weights,
-#    size_type='Amount',
-    fees=0.001
-)
-
-# Add the benchmark returns to the portfolio stats
-print(portfolio.stats(metrics = ["start", 
-                                 "end", 
-                                 "period", 
-                                 "start_value", 
-                                 "end_value", 
-                                 "total_return", 
-                                 "benchmark_return",
-                                 "max_gross_exposure", 
-                                 "total_fees_paid", 
-                                 "max_dd", 
-                                 "total_trades", 
-                                 "win_rate", 
-                                 "profit_factor", 
-                                 "expectancy", 
-                                 "sharpe_ratio", 
-                                 "sortino_ratio"], group_by = True))
-
-# Get exposure for the entire duration of portfolio
-exposure = portfolio.gross_exposure(group_by=True)
-
-print(f"Average exposure: {exposure.mean()}")
-
-# Get the returns of the portfolio for each day
-returns = portfolio.returns(group_by=True)
-
-# Adjust the returns by the gross exposure
-adjusted_returns = returns / exposure
-
-# Handle cases where exposure is zero (to avoid division by zero)
-adjusted_returns = adjusted_returns.replace([np.inf, -np.inf], np.nan)
-adjusted_total_returns = (adjusted_returns + 1).cumprod() - 1
-final_adjusted_total_return = adjusted_total_returns.iloc[-2]
-print(f"Final adjusted total return: {final_adjusted_total_return * 100:.2f}%")
-
-# Getting Sharpe and Sortino ratios
-print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
-print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
+# Printing portfolio stats for each sector
+for sector in sector_portfolio:
+    print(f"Statistics for {sector} sector:")
+    print(sector_portfolio[sector].stats(metrics = ["start", 
+                                                    "end", 
+                                                    "period", 
+                                                    "start_value", 
+                                                    "end_value", 
+                                                    "total_return", 
+                                                    "benchmark_return",
+                                                    "max_gross_exposure", 
+                                                    "total_fees_paid", 
+                                                    "max_dd", 
+                                                    "total_trades", 
+                                                    "win_rate", 
+                                                    "profit_factor", 
+                                                    "expectancy", 
+                                                    "sharpe_ratio", 
+                                                    "sortino_ratio"], 
+                                         group_by = True))
 
 #Downloading S&P 500 data
-hold_data = data
-hold_portfolio = vbt.Portfolio.from_holding(hold_data, init_cash=initial_capital, fees=0.001)
+sector_portfolios = {}
 
-benchmark_stats = hold_portfolio.stats()
-print("\nBenchmark stats:")
-print(benchmark_stats)
+# Create a portfolio for each sector
+for sector in sector_stocks.keys():
+    
+    # Fetch the price data for the stocks in the current sector
+    sector_data = data.loc[:, sector_stocks[sector]]
+    
+    # Create a portfolio where we simply hold the stocks in the current sector
+    sector_portfolios[sector] = vbt.Portfolio.from_holding(sector_data, init_cash=initial_capital, fees=0.001)
 
-print(f"Sharpe ratio: {hold_portfolio.sharpe_ratio(group_by = True, freq='D')}")
-print(f"Sortino ratio: {hold_portfolio.sortino_ratio(group_by = True, freq='D')}")
+# Create a dictionary to hold the stats for each sector
+sector_stats = {}
 
+# For each sector
+for sector, portfolio in sector_portfolios.items():
+    
+    # Compute the portfolio stats
+    sector_stats[sector] = portfolio.stats()
+    
+    # Print the stats for the current sector
+    print(f"\nStats for {sector}:")
+    print(sector_stats[sector])
+    print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
+    print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
