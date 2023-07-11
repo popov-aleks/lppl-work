@@ -23,7 +23,7 @@ tables = pd.read_html(url, header=0)  # Reads all tables on the page. header=0 u
 table = tables[0]
 # Now, you can select the columns 'Symbol' and 'GICS Sector'
 stocks_with_sectors = table[['Symbol', 'GICS Sector']]
-stocks_with_sectors = stocks_with_sectors[~stocks_with_sectors['Symbol'].isin(['BRK.B', 'BF.B', 'GEHC', 'CEG', 'OTIS', 'CARR', 'OGN'])]
+stocks_with_sectors = stocks_with_sectors[~stocks_with_sectors['Symbol'].isin(['BRK.B', 'BF.B', 'GEHC', 'CEG', 'OTIS', 'CARR', 'OGN', 'EG'])]
 
 # Keep the sector data for later use
 sectors = {row['Symbol']: row['GICS Sector'] for _, row in stocks_with_sectors.iterrows()}
@@ -43,7 +43,7 @@ days_after_tc_param = 30
 
 # Date range
 start_date='2020-01-01'
-end_date='2023-07-10'
+end_date='2023-07-01'
 
 #Helper functions
 def loss(params, x, y):
