@@ -158,7 +158,10 @@ def analyze_stocks(data, model_window = model_window_param):
         df_r2 = pd.concat([df_r2, df_r2_temp], axis=0)
     return df_b, df_r2
 
-sector_data = {sector: data.loc[data['Symbol'].isin(stocks_with_sectors[stocks_with_sectors['GICS Sector'] == sector]['Symbol'].tolist())] for sector in stocks_with_sectors['GICS Sector'].unique()}
+sector_data = {
+    sector: data[[symbol for symbol in stocks_with_sectors[stocks_with_sectors['GICS Sector'] == sector]['Symbol'].tolist() if symbol in data.columns]]
+    for sector in stocks_with_sectors['GICS Sector'].unique()
+}
 
 # Creating dataframes for b and r2 values for each sector
 sector_b_values = {}
