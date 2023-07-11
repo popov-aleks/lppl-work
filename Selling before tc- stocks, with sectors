@@ -278,14 +278,13 @@ for sector in sector_buy_indicator:
     sector_entry_signal[sector] = entry_signal
     sector_exit_signal[sector] = exit_signal
     sector_entry_signal[sector] = sector_entry_signal[sector].loc[start_date:end_date]
+    sector_exit_signal[sector] = sector_exit_signal[sector].loc[start_date:end_date]
     sector_entry_signal[sector].iloc[0] = True
-
-for sector in sector_data:
-    sector_data[sector] = sector_data[sector].loc[start_date:end_date]
 
 # Creating the portfolio for each sector
 sector_portfolio = {}
 for sector in sector_data:
+    sector_data[sector] = sector_data[sector].loc[start_date:end_date]
     sector_portfolio[sector] = vbt.Portfolio.from_signals(
         sector_data[sector],
         sector_entry_signal[sector],
