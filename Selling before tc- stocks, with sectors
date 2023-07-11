@@ -306,7 +306,8 @@ for sector in sector_portfolio:
                                                     "win_rate", 
                                                     "profit_factor", 
                                                     "expectancy"]))
-
+    exposure = sector_portfolio[sector].gross_exposure(group_by=True)
+    print(f"Average exposure: {exposure.mean()}")
     print(f"Sharpe ratio: {sector_portfolio[sector].sharpe_ratio(group_by = True, freq='D')}")
     print(f"Sortino ratio: {sector_portfolio[sector].sortino_ratio(group_by = True, freq='D')}")
 
