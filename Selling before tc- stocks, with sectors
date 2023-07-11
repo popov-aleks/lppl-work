@@ -18,7 +18,10 @@ import os
 warnings.filterwarnings('ignore')
 
 url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
-table = pd.read_html(url)
+tables = pd.read_html(url, header=0)  # Reads all tables on the page. header=0 uses the first row as column names.
+# Let's assume that the first table on the page is the one you want
+table = tables[0]
+# Now, you can select the columns 'Symbol' and 'GICS Sector'
 stocks_with_sectors = table[['Symbol', 'GICS Sector']]
 stocks_with_sectors = stocks_with_sectors[~stocks_with_sectors['Symbol'].isin(['BRK.B', 'BF.B', 'GEHC', 'CEG', 'OTIS', 'CARR', 'OGN'])]
 
