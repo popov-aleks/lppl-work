@@ -69,12 +69,12 @@ fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 data = yf.download(index_symbol, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
-def analyze_stock(data, model_window = model_window_param):
+def analyze_stock(data, model_window=model_window_param):
     all_dates = data.index.unique()
     df_b = pd.Series(index=all_dates)
     df_r2 = pd.Series(index=all_dates)
     for i in range(model_window, len(all_dates), 30):
-        historical_data = data.loc[all_dates[i-model_window]:all_dates[i]]
+        historical_data = data.loc[all_dates[i - model_window] : all_dates[i]]
         historical_data = historical_data.rolling(window=5).mean().dropna()
         xdata = (historical_data.index - historical_data.index[0]).days.values
         ydata = historical_data.values
@@ -85,6 +85,8 @@ def analyze_stock(data, model_window = model_window_param):
         r2 = r2_score(log_ydata, fitted_y)
         df_b[all_dates[i]] = b
         df_r2[all_dates[i]] = r2
+    df_b = df_b.reindex(data.index).ffill().bfill()
+    df_r2 = df_r2.reindex(data.index).ffill().bfill()
     return df_b, df_r2
 
 df_b_values, df_r2_values = analyze_stock(data, model_window_param)
