@@ -13,6 +13,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 from vectorbt.generic.plotting import Scatter
+import os
 
 warnings.filterwarnings('ignore')
 
@@ -35,7 +36,7 @@ stocks10 = stocks[:10]
 model_window_param = 70
 b_weight_param = 0.75
 r2_weight_param = 0.25
-signal_threshold_param = 65
+signal_threshold_param = 70
 buy_back_param = 30
 max_searches_param = 20
 days_after_tc_param = 30
@@ -44,14 +45,14 @@ days_after_tc_param = 30
 start_date='2022-01-01'
 end_date='2023-01-01'
 
-index_symbol = 'VCR'
-
 #Helper functions
 def loss(params, x, y):
     return func(x, *params) - y
 
 def func(x, a, b, c):
     return a * np.exp(b * x) + c
+
+start_time = time.time()
 
 def compute_fetch_start_date(start_date, model_window):
     start_date_dt = pd.to_datetime(start_date)
@@ -66,20 +67,29 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(index_symbol, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
-print(data)
 
-def analyze_stock(data, model_window):
-    df_b = pd.DataFrame()
-    df_r2 = pd.DataFrame()
-
-    for i in range(model_window, len(data), 30):
+# This is the actual indicator. Currently, it is based on the modelling of the log of 5-day moving average of the price data
+# model_window days before the current date to an exponential curve. This modelling happens every 30 days (but can be modified).
+# This is slightly arbitrary, but is just a starting point I chose, where the threshold depends on the multiple of the
+# model's exponent and its r^2 value, ie how closely it resembles a faster-than-exponential growth. If the model meets the
+# requirements, we fit it to the LPPL model. I have tried doing the normal curve_fit in this case, but that takes an 
+# incredibly long time. However, there is an lppl library in Python which is very efficient and, having visualised it, 
+# seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
+# Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
+# We sell everything at the end of the window.
+def analyze_stock(data, model_window = model_window_param):
+    all_dates = data.index.unique()
+    b_values = []
+    r2_values = []
+    for i in range(model_window, len(all_dates), 30):  # loop over dates
         df = data
-
-        historical_data = df.iloc[i-model_window:i]
+        historical_data = df.loc[all_dates[i-model_window]:all_dates[i]]
         historical_data = historical_data.rolling(window=5).mean().dropna()
+        if len(historical_data) == 0:
+            continue
         xdata = (historical_data.index - historical_data.index[0]).days.values
         ydata = historical_data.values
         log_ydata = np.log(ydata + 1).ravel()
@@ -88,25 +98,22 @@ def analyze_stock(data, model_window):
         a, b, c = res.x
         r2 = r2_score(log_ydata, fitted_y)
 
-        # Apply standard scaling to b and r2 values for this time period
-        scaler = StandardScaler() 
-        b_values = scaler.fit_transform(np.array([b]).reshape(-1, 1)).ravel()
-        r2_values = scaler.fit_transform(np.array([r2]).reshape(-1, 1)).ravel()
+        b_values.append(b)
+        r2_values.append(r2)
+    scaler = StandardScaler()
+    b_values_scaled = scaler.fit_transform(np.array(b_values).reshape(-1,1)).ravel()
+    r2_values_scaled = scaler.fit_transform(np.array(r2_values).reshape(-1,1)).ravel()
 
-        # Add these values to our dataframes
-        df_b_temp = pd.DataFrame(b_values, index=[df.index[i]])
-        df_r2_temp = pd.DataFrame(r2_values, index=[df.index[i]])
-        df_b = pd.concat([df_b, df_b_temp])
-        df_r2 = pd.concat([df_r2, df_r2_temp])
-
-    return df_b, df_r2
+    return b_values_scaled, r2_values_scaled
 
 # Creating dataframes for b and r2 values
-df_b_values, df_r2_values = analyze_stock(data, model_window_param)
+df_b_values, df_r2_values = analyze_stocks(data, model_window_param)
 df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
 df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
 df_b_values = df_b_values.reindex(data.index)
 df_r2_values = df_r2_values.reindex(data.index)
+
+initial_capital = 1000000
 
 def exp_growth_and_r2(close,
                     df_b_values,
@@ -119,36 +126,41 @@ def exp_growth_and_r2(close,
                     max_searches=max_searches_param,
                     days_after_tc=days_after_tc_param):
 
-    output = np.zeros(len(close))
-    ticker = close.columns[0]
-    for i in range(model_window, len(close), 30):
-        if close.index[i] not in df_b_values.index or close.index[i] not in df_r2_values.index:
-            continue
+    try:
+        output = np.zeros(len(close))
+        ticker = close.columns[0]
+        for i in range(model_window, len(close), 30):
 
-        b_value = df_b_values.loc[close.index[i], ticker]
-        r2_value = df_r2_values.loc[close.index[i], ticker]
-        b_norm_value = 50 + (100 / 3) * b_value
-        r2_norm_value = 50 + (100 / 3) * r2_value
-        signal = b_norm_value * b_weight + r2_norm_value * r2_weight
+            if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
+                continue
 
-        if signal > signal_threshold and close.iloc[i] > close.iloc[i - model_window]:
-            historical_data = close.iloc[i-model_window:i]  
-            time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
-            price = np.log(historical_data.values).ravel()
-            observations = np.array([time, price])
-            tcs = []
-            for _ in range(7):
-                lppls_model = lppls.LPPLS(observations=observations)
-                tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
-                tcs.append(tc)
-            tc = np.median(tcs)
-            tc = tc - datetime.toordinal(historical_data.index[-1])
-            
-            if tc < buy_back:  
-                output[i] = -1
-                if (i + buy_back + days_after_tc) < len(close):
-                    output[i + buy_back + days_after_tc] = 1  # Buy back the stock after 'days_after_tc' days
-    return output
+            b_value = df_b_values.loc[close.index[i], ticker]
+            r2_value = df_r2_values.loc[close.index[i], ticker]
+            signal = b_value * b_weight + r2_norm_value * r2_value
+
+            if signal > signal_threshold:
+                historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
+                time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
+                price = np.log(historical_data.values).ravel()
+                observations = np.array([time, price])
+                tcs = []
+                for _ in range(7):
+                    lppls_model = lppls.LPPLS(observations=observations)
+                    tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
+                    tcs.append(tc)
+                tc = np.median(tcs)
+                tc = tc - datetime.toordinal(historical_data.index[-1])
+
+                if tc < buy_back:  # Sell the stock when a crash is predicted within 30 days
+                    output[i] = -1
+                    if (i + buy_back + days_after_tc) < len(output):  # Buy it back after 30 days
+                        output[i + buy_back + days_after_tc] = 1
+
+        output[-1] = -1  # Sell everything at the end of the window
+        return output
+
+    except Exception as e:
+        print(f"Couldn't process stock. Error: {str(e)}")
 
 # Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
