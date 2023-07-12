@@ -90,8 +90,10 @@ def analyze_stock(data, model_window=model_window_param):
     return df_b, df_r2
 
 df_b_values, df_r2_values = analyze_stock(data, model_window_param)
-df_b_values = df_b_values.ffill().bfill()
-df_r2_values = df_r2_values.ffill().bfill()
+df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
+df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
+df_b_values = df_b_values.reindex(data.index)
+df_r2_values = df_r2_values.reindex(data.index)
 
 initial_capital = 1000000
 
