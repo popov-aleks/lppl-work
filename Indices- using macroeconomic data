@@ -130,9 +130,6 @@ def exp_growth_and_r2(close,
                     output[i + buy_back + days_after_tc] = 1  # Buy back the stock after 'days_after_tc' days
     return output
 
-    except Exception as e:
-        print(f"Couldn't process stock. Error: {str(e)}")
-
 # Creating the indicator
 BuyIndicator = vbt.IndicatorFactory(
     input_names=['close', 'df_b_values', 'df_r2_values'],
