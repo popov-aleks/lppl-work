@@ -120,6 +120,7 @@ def exp_growth_and_r2(close,
                     days_after_tc=days_after_tc_param):
 
     output = np.zeros(len(close))
+    ticker = close.columns[0]
     for i in range(model_window, len(close), 30):
         if close.index[i] not in df_b_values.index or close.index[i] not in df_r2_values.index:
             continue
