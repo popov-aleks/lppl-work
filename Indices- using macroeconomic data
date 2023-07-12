@@ -44,7 +44,7 @@ days_after_tc_param = 30
 start_date='2022-01-01'
 end_date='2023-01-01'
 
-index_symbol = 'SPY'
+index_symbol = 'VCR'
 
 #Helper functions
 def loss(params, x, y):
