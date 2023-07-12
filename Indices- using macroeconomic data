@@ -329,6 +329,8 @@ for stock in data.columns:
     print(f"Sharpe ratio: {portfolio.sharpe_ratio(freq='D')}")
     print(f"Sortino ratio: {portfolio.sortino_ratio(freq='D')}")
 
+    portfolio.plot().show()
+
     # Create and print benchmark portfolio stats
     hold_portfolio = vbt.Portfolio.from_holding(data[stock], init_cash=initial_capital, fees=0.001)
     benchmark_stats = hold_portfolio.stats()
