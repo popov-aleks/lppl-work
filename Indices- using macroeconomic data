@@ -32,13 +32,11 @@ stocks.remove('OGN')
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 
-single_stock = "VCR"  # replace it with your preferred stock
-
 # Parameters
 model_window_param = 70
 b_weight_param = 0.75
 r2_weight_param = 0.25
-signal_threshold_param = 70
+signal_threshold_param = 65
 buy_back_param = 30
 max_searches_param = 20
 days_after_tc_param = 30
@@ -69,7 +67,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(single_stock, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 
@@ -82,37 +80,47 @@ data = data.ffill().bfill()
 # seems to be quite good at fitting. There is a parameter, max_searches, which can be adjusted to prevent overfitting etc.
 # Then, if the predicted bubble burst is more than 14 days into the future, we buy the stock, and sell it 14 days before tc.
 # We sell everything at the end of the window.
-def analyze_stock(data, model_window = model_window_param):
+def analyze_stocks(data, model_window = model_window_param):
+    df_b = pd.DataFrame()
+    df_r2 = pd.DataFrame()
     all_dates = data.index.unique()
-    b_values = []
-    r2_values = []
-    for i in range(model_window, len(all_dates), 30):  # loop over dates
-        df = data
-        historical_data = df.loc[all_dates[i-model_window]:all_dates[i]]
-        historical_data = historical_data.rolling(window=5).mean().dropna()
-        if len(historical_data) == 0:
-            continue
-        xdata = (historical_data.index - historical_data.index[0]).days.values
-        ydata = historical_data.values
-        log_ydata = np.log(ydata + 1).ravel()
-        res = least_squares(loss, x0=(1, 0.01, 1), args=(xdata, log_ydata))
-        fitted_y = func(xdata, *res.x).ravel()
-        a, b, c = res.x
-        r2 = r2_score(log_ydata, fitted_y)
+    for i in range(model_window, len(all_dates), 30): # here we loop over dates first
+        date_b_values = []
+        date_r2_values = []
+        tickers = []
+        for ticker in data.columns:
+            df = data[ticker]
+            if all_dates[i] not in df.index:
+                continue
+            historical_data = df.loc[all_dates[i-model_window]:all_dates[i]]
+            historical_data = historical_data.rolling(window=5).mean().dropna()
+            if len(historical_data) == 0:
+                continue
+            xdata = (historical_data.index - historical_data.index[0]).days.values
+            ydata = historical_data.values
+            log_ydata = np.log(ydata + 1).ravel()
+            res = least_squares(loss, x0=(1, 0.01, 1), args=(xdata, log_ydata))
+            fitted_y = func(xdata, *res.x).ravel()
+            a, b, c = res.x
+            r2 = r2_score(log_ydata, fitted_y)
 
-        b_values.append(b)
-        r2_values.append(r2)
-    scaler = StandardScaler()
-    b_values_scaled = scaler.fit_transform(np.array(b_values).reshape(-1,1)).ravel()
-    r2_values_scaled = scaler.fit_transform(np.array(r2_values).reshape(-1,1)).ravel()
+            date_b_values.append(b)
+            date_r2_values.append(r2)
+            tickers.append(ticker)
+        scaler = StandardScaler()
+        date_b_values_scaled = scaler.fit_transform(np.array(date_b_values).reshape(-1,1)).ravel()
+        date_r2_values_scaled = scaler.fit_transform(np.array(date_r2_values).reshape(-1,1)).ravel()
+        df_b_temp = pd.DataFrame(date_b_values_scaled, columns=[all_dates[i]], index=tickers).T
+        df_r2_temp = pd.DataFrame(date_r2_values_scaled, columns=[all_dates[i]], index=tickers).T
+        df_b = pd.concat([df_b, df_b_temp], axis=0)
+        df_r2 = pd.concat([df_r2, df_r2_temp], axis=0)
+    return df_b, df_r2
 
-    return b_values_scaled, r2_values_scaled
+
 
 # Creating dataframes for b and r2 values
-df_b_values, df_r2_values = analyze_stock(data, model_window_param)
-df_b_values = pd.DataFrame(df_b_values)
+df_b_values, df_r2_values = analyze_stocks(data, model_window_param)
 df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
-df_r2_values = pd.DataFrame(df_r2_values)
 df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
 df_b_values = df_b_values.reindex(data.index)
 df_r2_values = df_r2_values.reindex(data.index)
@@ -206,7 +214,8 @@ buy_indicator = BuyIndicator.run(data,
 entry_signal = buy_indicator.buy_indicator == 1
 exit_signal = buy_indicator.buy_indicator == -1
 
-print(entry_signal)
+# Dropping some extra columns to make it match data
+entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
 
 # Cropping the data for the backtest to make it faster
 data = data.loc[start_date:end_date]
@@ -221,65 +230,66 @@ entry_signal.iloc[0] = True
 #weights = weights.mul(initial_capital / data).fillna(0)
 
 # Creating the portfolio. Can change fees as desired
-portfolio = vbt.Portfolio.from_signals(
-    data,
-    entry_signal,
-    exit_signal,
-    init_cash=initial_capital,
-#    size=weights,
-#    size_type='Amount',
-    fees=0.001
-)
+for stock in data.columns:
 
-# Add the benchmark returns to the portfolio stats
-print(portfolio.stats(metrics = ["start", 
-                                 "end", 
-                                 "period", 
-                                 "start_value", 
-                                 "end_value", 
-                                 "total_return", 
-                                 "benchmark_return",
-                                 "max_gross_exposure", 
-                                 "total_fees_paid", 
-                                 "max_dd", 
-                                 "total_trades", 
-                                 "win_rate", 
-                                 "profit_factor", 
-                                 "expectancy", 
-                                 "sharpe_ratio", 
-                                 "sortino_ratio"], group_by = True))
+    # Create portfolio for each stock
+    portfolio = vbt.Portfolio.from_signals(
+        data[stock],
+        entry_signal[stock],
+        exit_signal[stock],
+        init_cash=initial_capital,
+        fees=0.001
+    )
 
-# Get exposure for the entire duration of portfolio
-exposure = portfolio.gross_exposure(group_by=True)
+    print(f"Stats for {stock}:")
+    
+    # Print out portfolio stats
+    stats = portfolio.stats(metrics=[
+        "start", 
+        "end", 
+        "period", 
+        "start_value", 
+        "end_value", 
+        "total_return", 
+        "benchmark_return",
+        "max_gross_exposure", 
+        "total_fees_paid", 
+        "max_dd", 
+        "total_trades", 
+        "win_rate", 
+        "profit_factor", 
+        "expectancy", 
+        "sharpe_ratio", 
+        "sortino_ratio"
+    ])
+    print(stats)
 
-print(f"Average exposure: {exposure.mean()}")
+    # Calculate and print exposure
+    exposure = portfolio.gross_exposure()
+    print(f"Average exposure: {exposure.mean()}")
 
-# Get the returns of the portfolio for each day
-returns = portfolio.returns(group_by=True)
+    # Calculate, adjust and print returns
+    returns = portfolio.returns()
+    adjusted_returns = returns / exposure
+    adjusted_returns = adjusted_returns.replace([np.inf, -np.inf], np.nan)
+    adjusted_total_returns = (adjusted_returns + 1).cumprod() - 1
+    final_adjusted_total_return = adjusted_total_returns.iloc[-1]
+    print(f"Final adjusted total return: {final_adjusted_total_return * 100:.2f}%")
 
-# Adjust the returns by the gross exposure
-adjusted_returns = returns / exposure
+    # Print Sharpe and Sortino ratios
+    print(f"Sharpe ratio: {portfolio.sharpe_ratio(freq='D')}")
+    print(f"Sortino ratio: {portfolio.sortino_ratio(freq='D')}")
 
-# Handle cases where exposure is zero (to avoid division by zero)
-adjusted_returns = adjusted_returns.replace([np.inf, -np.inf], np.nan)
-adjusted_total_returns = (adjusted_returns + 1).cumprod() - 1
-final_adjusted_total_return = adjusted_total_returns.iloc[-2]
-print(f"Final adjusted total return: {final_adjusted_total_return * 100:.2f}%")
+    # Create and print benchmark portfolio stats
+    hold_portfolio = vbt.Portfolio.from_holding(data[stock], init_cash=initial_capital, fees=0.001)
+    benchmark_stats = hold_portfolio.stats()
+    print("\nBenchmark stats for {stock}:")
+    print(benchmark_stats)
 
-# Getting Sharpe and Sortino ratios
-print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
-print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
-
-#Downloading S&P 500 data
-hold_data = data
-hold_portfolio = vbt.Portfolio.from_holding(hold_data, init_cash=initial_capital, fees=0.001)
-
-benchmark_stats = hold_portfolio.stats()
-print("\nBenchmark stats:")
-print(benchmark_stats)
-
-print(f"Sharpe ratio: {hold_portfolio.sharpe_ratio(group_by = True, freq='D')}")
-print(f"Sortino ratio: {hold_portfolio.sortino_ratio(group_by = True, freq='D')}")
+    # Print benchmark Sharpe and Sortino ratios
+    print(f"Benchmark Sharpe ratio: {hold_portfolio.sharpe_ratio(freq='D')}")
+    print(f"Benchmark Sortino ratio: {hold_portfolio.sortino_ratio(freq='D')}")
+    print("\n" + "="*50 + "\n")
 
 end_time = time.time()
 print(f'Time taken: {end_time - start_time} seconds')
