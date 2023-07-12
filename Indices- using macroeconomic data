@@ -206,6 +206,8 @@ buy_indicator = BuyIndicator.run(data,
 entry_signal = buy_indicator.buy_indicator == 1
 exit_signal = buy_indicator.buy_indicator == -1
 
+print(entry_signal)
+
 # Dropping some extra columns to make it match data
 entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_buy_back', 'custom_max_searches', 'custom_days_after_tc'])
 
