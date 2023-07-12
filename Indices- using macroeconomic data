@@ -108,7 +108,12 @@ def exp_growth_and_r2(close,
 
     output = np.zeros(len(close))
     for i in range(model_window, len(close), 30):
-        b_value = df_b_values[close.index[i]]
+        try:  # try-except block for debugging
+            b_value = df_b_values[close.index[i]]
+        except KeyError as e:
+            print(f"KeyError: {e}")
+            print(f"Close index {i}: {close.index[i]}")
+            print(f"df_b_values indices: {df_b_values.index}")
         r2_value = df_r2_values[close.index[i]]
         b_norm_value = 50 + (50 / 3) * b_value
         r2_norm_value = 50 + (50 / 3) * r2_value
