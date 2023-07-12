@@ -136,7 +136,9 @@ def exp_growth_and_r2(close,
 
             b_value = df_b_values.loc[close.index[i], ticker]
             r2_value = df_r2_values.loc[close.index[i], ticker]
-            signal = b_value * b_weight + r2_norm_value * r2_value
+            b_norm_value = 50 + (50 / 3) * b_value
+            r2_norm_value = 50 + (50 / 3) * r2_value
+            signal = b_norm_value * b_weight + r2_norm_value * r2_weight
 
             if signal > signal_threshold:
                 historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
