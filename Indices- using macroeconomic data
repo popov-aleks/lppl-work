@@ -32,6 +32,8 @@ stocks.remove('OGN')
 stocks100 = stocks[:100]
 stocks10 = stocks[:10]
 
+single_stock = "VCR"  # replace it with your preferred stock
+
 # Parameters
 model_window_param = 70
 b_weight_param = 0.75
@@ -67,7 +69,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(stocks, start=fetch_start_date, end=end_date)['Close']
+data = yf.download(single_stock, start=fetch_start_date, end=end_date)['Close']
 data = data.ffill().bfill()
 
 
