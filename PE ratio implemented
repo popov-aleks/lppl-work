@@ -100,8 +100,6 @@ pe_ratio_df.rename(columns={"Unnamed: 0_level_0 Date": "Date"}, inplace=True)
 # Set 'Date' as the new index
 pe_ratio_df.set_index("Date", inplace=True)
 
-print(pe_ratio_df)
-
 def compute_fetch_start_date(start_date, model_window):
     start_date_dt = pd.to_datetime(start_date)
     business_days = 0
@@ -209,8 +207,8 @@ def exp_growth_and_r2(close,
             # Adjust the signal threshold based on the P/E ratio compared to its 2-year average
             if pe_ratio < 0.97 * pe_ratio_avg:
                 signal_threshold += 5
-           elif pe_ratio > 1.03 * pe_ratio_avg:
-               signal_threshold -= 5
+            elif pe_ratio > 1.03 * pe_ratio_avg:
+                signal_threshold -= 5
 
             b_value = df_b_values.loc[close.index[i], ticker]
             r2_value = df_r2_values.loc[close.index[i], ticker]
@@ -264,11 +262,6 @@ BuyIndicator = vbt.IndicatorFactory(
                 days_after_tc=days_after_tc_param,
                 keep_pd=True,
                 per_column=True)
-
-print(data)
-print(df_b_values)
-print(df_r2_values)
-print(pe_ratio_df)
 
 # Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
 buy_indicator = BuyIndicator.run(data,
