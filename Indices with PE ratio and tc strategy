@@ -207,6 +207,7 @@ def exp_growth_and_r2(close,
                     tcs.append(tc)
                 tc = np.median(tcs)
                 tc = tc - datetime.toordinal(historical_data.index[-1])
+                print(f"tc: {tc}, buy_back: {buy_back}")  # print 'tc' and 'buy_back'
             
                 if tc < buy_back:  # Sell the stock when a crash is predicted within 30 days
                     print(f"SELL signal at index {i}, date {close.index[i]}")  # print a message when a SELL signal is triggered
