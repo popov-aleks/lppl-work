@@ -175,7 +175,7 @@ def exp_growth_and_r2(close,
                 continue
             
             pe_ratio_df_local = pe_ratio_df.copy()
-            signal_threshold_local = signal_threshold.copy()
+            signal_threshold_local = signal_threshold
             
             # Then try locating the row again
             target_date = close.index[i]
