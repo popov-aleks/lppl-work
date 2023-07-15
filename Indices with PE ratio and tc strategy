@@ -70,13 +70,13 @@ pe_ratio_df.dropna(how='all', inplace=True)
 pe_ratio_df.columns = pe_ratio_df.columns.map(' '.join).str.strip()
 pe_ratio_df['Unnamed: 0_level_0 Date'] = pe_ratio_df['Unnamed: 0_level_0 Date'].apply(custom_date_parser)
 pe_ratio_df = pe_ratio_df[['Unnamed: 0_level_0 Date', 'P/E10 or CAPE']]
-fetch_start_date = (pd.to_datetime(start_date) - pd.DateOffset(days=731)).strftime('%Y-%m-%d')
+fetch_start_date = (pd.to_datetime(start_date) - pd.DateOffset(days=732)).strftime('%Y-%m-%d')
 pe_ratio_df.set_index('Unnamed: 0_level_0 Date', inplace=True)
+pe_ratio_df = pe_ratio_df.resample('D').ffill()[:-1]
 print(fetch_start_date)
 print(end_date)
 print(pe_ratio_df.index)
 pe_ratio_df = pe_ratio_df[fetch_start_date:end_date]
-pe_ratio_df = pe_ratio_df.resample('D').ffill()[:-1]
 pe_ratio_df['PE_Rolling_Avg'] = pe_ratio_df['P/E10 or CAPE'].rolling(window=2*365).mean()
 
 def compute_fetch_start_date(start_date, model_window):
