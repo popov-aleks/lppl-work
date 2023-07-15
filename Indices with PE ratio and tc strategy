@@ -79,7 +79,8 @@ first_valid_date = pe_ratio_df.index[0]
 last_valid_date = pe_ratio_df.index[-1]
 fetch_start_date = max(fetch_start_date, first_valid_date)
 end_date = min(end_date, last_valid_date)
-pe_ratio_df = pe_ratio_df[fetch_start_date:end_date]
+fetch_start_date = pe_ratio_df.index.asof(fetch_start_date)
+end_date = pe_ratio_df.index.asof(end_date)
 pe_ratio_df = pe_ratio_df[fetch_start_date:end_date]
 pe_ratio_df = pe_ratio_df.resample('D').ffill()[:-1]
 pe_ratio_df['PE_Rolling_Avg'] = pe_ratio_df['P/E10 or CAPE'].rolling(window=2*365).mean()
