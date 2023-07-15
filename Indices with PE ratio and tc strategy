@@ -189,8 +189,8 @@ def exp_growth_and_r2(close,
             # Adjust the signal threshold based on the P/E ratio compared to its 2-year average
             if pe_ratio < 0.97 * pe_ratio_avg:
                 signal_threshold += 10
-#            elif pe_ratio > 1.03 * pe_ratio_avg:
-#                signal_threshold -= 5
+            elif pe_ratio > 1.03 * pe_ratio_avg:
+                signal_threshold -= 5
 
             b_value = df_b_values.loc[close.index[i], ticker]
             r2_value = df_r2_values.loc[close.index[i], ticker]
