@@ -41,7 +41,7 @@ max_searches_param = 20
 days_after_tc_param = 15
 
 # Date range
-start_date='2020-01-01'
+start_date='2000-01-01'
 end_date='2023-07-01'
 
 #Helper functions
@@ -173,8 +173,6 @@ def exp_growth_and_r2(close,
         for i in range(model_window, len(close), 30):
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
                 continue
-
-            print(signal_threshold)
 
             pe_ratio_df_local = pe_ratio_df.copy()
             
