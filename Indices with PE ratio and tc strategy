@@ -209,6 +209,7 @@ def exp_growth_and_r2(close,
                 tc = tc - datetime.toordinal(historical_data.index[-1])
             
                 if tc < buy_back:  # Sell the stock when a crash is predicted within 30 days
+                    print(f"SELL signal at index {i}, date {close.index[i]}")  # print a message when a SELL signal is triggered
                     output[i] = -1
                     start_price = close[ticker][i]
                     start_track = False
@@ -227,10 +228,12 @@ def exp_growth_and_r2(close,
                                 growth_days = 0
                         if growth_days >= 3:  # 3 growth days in a row
                             output[j] = 1
+                            print(f"BUY signal at index {j}, date {close.index[j]}")  # print a message when a BUY signal is triggered
                             break
                     else:  # If we have not bought back within 'days_after_tc' days, we buy it back anyway
                         if (i + days_after_tc) < len(output) and output[i + days_after_tc] != -1:  # Buy it back after 'days_after_tc' days if it's not sold
                             output[i + days_after_tc] = 1
+                            print(f"BUY signal at index {i + days_after_tc}, date {close.index[i + days_after_tc]}")
             
                     output[-1] = -1  # Sell everything at the end of the window
             return output
