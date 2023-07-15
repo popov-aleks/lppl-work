@@ -53,6 +53,7 @@ def func(x, a, b, c):
 
 start_time = time.time()
 
+
 def custom_date_parser(date_float):
     """
     Converts a float in the form 'YYYY.X' to a datetime object,
@@ -70,8 +71,10 @@ pe_ratio_df.dropna(how='all', inplace=True)
 pe_ratio_df.columns = pe_ratio_df.columns.map(' '.join).str.strip()
 pe_ratio_df['Unnamed: 0_level_0 Date'] = pe_ratio_df['Unnamed: 0_level_0 Date'].apply(custom_date_parser)
 pe_ratio_df = pe_ratio_df[['Unnamed: 0_level_0 Date', 'P/E10 or CAPE']]
-fetch_start_date = (pd.to_datetime(start_date) - pd.DateOffset(days=731)).strftime('%Y-%m-%d')
+fetch_start_date = (pd.to_datetime(start_date) - pd.DateOffset(years=2)).strftime('%Y-%m-%d')
 pe_ratio_df.set_index('Unnamed: 0_level_0 Date', inplace=True)
+# Find the closest previous date available in data.
+fetch_start_date = pe_ratio_df.index.asof(fetch_start_date)
 print(fetch_start_date)
 print(end_date)
 print(pe_ratio_df.index)
@@ -220,7 +223,7 @@ def exp_growth_and_r2(close,
                             break
                         change_pct = (close[ticker][j] - start_price) / start_price
                         if not start_track:
-                            if change_pct <= -0.03:  # The price drops 3%
+                            if change_pct <= -0.1:  # The price drops 3%
                                 start_track = True
                         if start_track:
                             if close[ticker][j] > close[ticker][j-1]:  # Price grows compared to the previous day
