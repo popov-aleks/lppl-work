@@ -234,7 +234,7 @@ def exp_growth_and_r2(close,
                     else:  # If we have not bought back within 'days_after_tc' days, we buy it back anyway
                         if (i + days_after_tc) < len(output) and output[i + days_after_tc] != -1:  # Buy it back after 'days_after_tc' days if it's not sold
                             output[i + days_after_tc] = 1
-                signal_threshold = signal_threshold_param
+            signal_threshold = signal_threshold_param
             output[-1] = -1  # Sell everything at the end of the window
         return output
 
