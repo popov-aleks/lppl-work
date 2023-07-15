@@ -73,8 +73,13 @@ pe_ratio_df['Unnamed: 0_level_0 Date'] = pe_ratio_df['Unnamed: 0_level_0 Date'].
 pe_ratio_df = pe_ratio_df[['Unnamed: 0_level_0 Date', 'P/E10 or CAPE']]
 fetch_start_date = (pd.to_datetime(start_date) - pd.DateOffset(years=2)).strftime('%Y-%m-%d')
 pe_ratio_df.set_index('Unnamed: 0_level_0 Date', inplace=True)
+
+# Sort index in ascending order.
+pe_ratio_df.sort_index(inplace=True)
+
 # Find the closest previous date available in data.
 fetch_start_date = pe_ratio_df.index.asof(fetch_start_date)
+
 print(fetch_start_date)
 print(end_date)
 print(pe_ratio_df.index)
