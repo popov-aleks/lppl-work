@@ -233,7 +233,7 @@ def exp_growth_and_r2(close,
                             output[i + days_after_tc] = 1
             
                     output[-1] = -1  # Sell everything at the end of the window
-                    return output
+            return output
 
     except Exception as e:
         print(f"Couldn't process stock at index {i}, ticker {ticker}. Error: {str(e)}")
