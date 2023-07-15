@@ -207,7 +207,7 @@ def exp_growth_and_r2(close,
                     tcs.append(tc)
                 tc = np.median(tcs)
                 tc = tc - datetime.toordinal(historical_data.index[-1])
-
+            
                 if tc < buy_back:  # Sell the stock when a crash is predicted within 30 days
                     output[i] = -1
                     start_price = close[ticker][i]
@@ -225,15 +225,15 @@ def exp_growth_and_r2(close,
                                 growth_days += 1
                             else:  # If the price drops, reset the counter
                                 growth_days = 0
-                        if growth_days >= 5:  # 5 growth days in a row
+                        if growth_days >= 3:  # 3 growth days in a row
                             output[j] = 1
                             break
-
-                    if (i + buy_back + days_after_tc) < len(output) and output[i + buy_back + days_after_tc] != -1:  # Buy it back after 'days_after_tc' days if it's not sold
-                        output[i + buy_back + days_after_tc] = 1
-
-        output[-1] = -1  # Sell everything at the end of the window
-        return output
+                    else:  # If we have not bought back within 'days_after_tc' days, we buy it back anyway
+                        if (i + days_after_tc) < len(output) and output[i + days_after_tc] != -1:  # Buy it back after 'days_after_tc' days if it's not sold
+                            output[i + days_after_tc] = 1
+            
+                    output[-1] = -1  # Sell everything at the end of the window
+                    return output
 
     except Exception as e:
         print(f"Couldn't process stock at index {i}, ticker {ticker}. Error: {str(e)}")
