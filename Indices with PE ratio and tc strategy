@@ -184,8 +184,8 @@ def exp_growth_and_r2(close,
             pe_ratio = pe_ratio_row['P/E10 or CAPE']
 
             # Adjust the signal threshold based on the P/E ratio compared to its 2-year average
-#            if pe_ratio < 0.97 * pe_ratio_avg:
-#                signal_threshold += 10
+            if pe_ratio < 0.97 * pe_ratio_avg:
+                signal_threshold += 10
 #            elif pe_ratio > 1.03 * pe_ratio_avg:
 #                signal_threshold -= 5
 
