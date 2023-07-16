@@ -51,9 +51,6 @@ def loss(params, x, y):
 def func(x, a, b, c):
     return a * np.exp(b * x) + c
 
-def validate_data(index, ticker, df_b_values, df_r2_values):
-    return not np.isnan(df_b_values.loc[index, ticker]) or np.isnan(df_r2_values.loc[index, ticker])
-
 def adjust_threshold(pe_ratio, pe_ratio_avg, signal_threshold):
     if pe_ratio < 0.97 * pe_ratio_avg:
         signal_threshold += 10
@@ -226,7 +223,7 @@ def exp_growth_and_r2(close,
         output = np.zeros(len(close))
         ticker = close.columns[0]
         for i in range(model_window, len(close), 30):
-            if validate_data(close.index[i], ticker, df_b_values, df_r2_values):
+            if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
                 continue
             pe_ratio_df_local = pe_ratio_df.copy()
             target_date = close.index[i]
