@@ -150,7 +150,7 @@ def analyze_stocks(data, model_window = model_window_param):
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
     all_dates = data.index.unique()
-    for i in range(model_window, len(all_dates), 15): # here we loop over dates first
+    for i in range(model_window, len(all_dates), 1): # here we loop over dates first
         date_b_values = []
         date_r2_values = []
         tickers = []
@@ -222,7 +222,7 @@ def exp_growth_and_r2(close,
     try:
         output = np.zeros(len(close))
         ticker = close.columns[0]
-        for i in range(model_window, len(close), 15):
+        for i in range(model_window, len(close), 1):
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
                 continue
             pe_ratio_df_local = pe_ratio_df.copy()
