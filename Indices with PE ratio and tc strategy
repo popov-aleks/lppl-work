@@ -374,7 +374,7 @@ print(f"Sortino ratio: {hold_portfolio.sortino_ratio(group_by = True, freq='D')}
 
 # Looking at statistics for individual indices- not always needed
 stocks_with_pf = ['IBUY', 'RSPD']
-for stock in data.columns:
+for stock in stocks_with_pf:
 
     # Create portfolio for each stock
     portfolio = vbt.Portfolio.from_signals(
