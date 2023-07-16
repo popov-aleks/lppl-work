@@ -198,13 +198,19 @@ initial_capital = 1000000
 pe_ratio_df.index = pd.to_datetime(pe_ratio_df.index)
 data.index = pd.to_datetime(data.index)
 
-This is the function that actually generates buy and sell signals. Most of the logic is in the helper functions.
-Essentially, we get the normalised signal values from analyse_stocks, put them on a standard distribution, with
-a mean of 50, where 0 and 100 are 3 standard deviations away (and so 99% of values fall within those numbers).
-Then, we give each of the signals a weighting and, if the overall signal is greater than the threshold, we use
-the LPPL model. We fit the log of the past model_window days of data (as the LPPL model relies on oscillations
-around exponential growth) 7 times, taking the median of the data (will probably want to do that as many times
-as possible to remove outliers). If the                                                                       
+# This is the function that actually generates buy and sell signals. Most of the logic is in the helper functions.
+# Essentially, we get the normalised signal values from analyse_stocks, put them on a standard distribution, with
+# a mean of 50, where 0 and 100 are 3 standard deviations away (and so 99% of values fall within those numbers).
+# Then, we give each of the signals a weighting and, if the overall signal is greater than the threshold, we use
+# the LPPL model. We fit the log of the past model_window days of data (as the LPPL model relies on oscillations
+# around exponential growth) 7 times, taking the median of the data (will probably want to do that as many times
+# as possible to remove outliers). We sell the stock if the tc is less than before_tc days away. Then, we implement
+# a buyback logic. In this logic, we have a hard cap after which we buy the stock back- the after_tc parameter.
+# However, if a stock falls a certain amount, and then experiences a certain number of consecutive growth days,
+# we buy it back then. The logic is that the bubble may have already burst, and waiting any longer will simply
+# mean that the stock recovers its value, and we have to pay more for it. For the purposes of the backtest, we
+# sell everything at the end.
+
 def exp_growth_and_r2(close,
                       df_b_values,
                       df_r2_values,
