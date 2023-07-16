@@ -245,10 +245,10 @@ def exp_growth_and_r2(close,
 
                 if tc < before_tc:  # Sell the stock when a crash is predicted within 30 days
                     output[i] = -1
-                    output = track_price(i, days_after_tc, close, ticker, output)
+                    output = track_price(i, after_tc, close, ticker, output)
 
-                    # If we have not bought back within 'days_after_tc' days, we buy it back anyway
-                    if (i + after_tc) < len(output) and output[i + after_tc] != -1:  # Buy it back after 'days_after_tc' days if it's not sold
+                    # If we have not bought back within 'after_tc' days, we buy it back anyway
+                    if (i + after_tc) < len(output) and output[i + after_tc] != -1:  # Buy it back after 'after_tc' days if it's not sold
                         output[i + after_tc] = 1
 
             signal_threshold = signal_threshold_param
