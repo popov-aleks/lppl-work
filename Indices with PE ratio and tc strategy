@@ -65,7 +65,7 @@ def calculate_signal(b_value, r2_value, b_weight, r2_weight):
 
 def fit_lppls_model(observations, max_searches):
     tcs = []
-    for _ in range(7):
+    for _ in range(11):
         lppls_model = lppls.LPPLS(observations=observations)
         tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
         tcs.append(tc)
