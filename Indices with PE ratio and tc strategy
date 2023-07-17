@@ -65,7 +65,7 @@ def calculate_signal(b_value, r2_value, b_weight, r2_weight):
 
 def fit_lppls_model(observations, max_searches):
     tcs = []
-    for _ in range(7):
+    for _ in range(11):
         lppls_model = lppls.LPPLS(observations=observations)
         tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
         tcs.append(tc)
@@ -137,7 +137,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date_stocks = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(['VCR', 'RSPD', 'FDIS', 'XLY', 'XHB', 'IYC', 'RTH', 'ITB', 'XRT', 'FXD', 'PEJ'], start=fetch_start_date_stocks, end=end_date)['Close']
+data = yf.download(['VCR', 'RSPD', 'FDIS', 'XLY', 'XHB', 'IYC', 'RTH', 'ITB', 'XRT', 'FXD'], start=fetch_start_date_stocks, end=end_date)['Close']
 data = data.ffill().bfill()
 
 # This is our function to analyse our data- any analysis and any indicators on the stock are created here to
@@ -371,7 +371,7 @@ print(f"Sharpe ratio: {hold_portfolio.sharpe_ratio(group_by = True, freq='D')}")
 print(f"Sortino ratio: {hold_portfolio.sortino_ratio(group_by = True, freq='D')}")
 
 # Looking at statistics for individual indices- not always needed
-stocks_with_pf = ['PEJ']
+stocks_with_pf = []
 for stock in stocks_with_pf:
 
     # Create portfolio for each stock
