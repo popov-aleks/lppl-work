@@ -222,7 +222,7 @@ def exp_growth_and_r2(close,
     try:
         output = np.zeros(len(close))
         ticker = close.columns[0]
-        signal_list = [0, 0, 0]  # list to keep track of the last 3 signals
+        signal_list = [0, 0]  # list to keep track of the last 3 signals
         for i in range(model_window, len(close), 7):
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
                 continue
