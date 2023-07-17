@@ -35,13 +35,13 @@ stocks10 = stocks[:10]
 model_window_param = 70
 b_weight_param = 0.8
 r2_weight_param = 0.2
-signal_threshold_param = 75
+signal_threshold_param = 90
 before_tc_param = 25
 max_searches_param = 20
 after_tc_param = 15
 
 # Date range
-start_date='2000-01-01'
+start_date='2016-06-01'
 end_date='2023-07-01'
 
 #Helper functions
