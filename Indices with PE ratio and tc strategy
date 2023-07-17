@@ -109,7 +109,7 @@ def custom_date_parser(date_float):
         month = round((date_float - year) * 100)
         return pd.to_datetime(f'{year}-{month:02}', format='%Y-%m')
 
-pe_ratio_df = pd.read_excel('ie_data.xlsx', sheet_name='Data', header=[6, 7])
+pe_ratio_df = pd.read_excel('ie_data.xlsx.xlsx', sheet_name='Data', header=[6, 7])
 pe_ratio_df.dropna(how='all', inplace=True)
 pe_ratio_df.columns = pe_ratio_df.columns.map(' '.join).str.strip()
 pe_ratio_df['Unnamed: 0_level_0 Date'] = pe_ratio_df['Unnamed: 0_level_0 Date'].apply(custom_date_parser)
