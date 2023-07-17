@@ -87,7 +87,7 @@ def track_price(i, after_tc, close, ticker, output):
                 growth_days += 1
             else:  # If the price drops, reset the counter
                 growth_days = 0
-        if growth_days >= 3:  # 3 growth days in a row
+        if growth_days >= 5:  # 3 growth days in a row
             output[j] = 1
             break
     return output
