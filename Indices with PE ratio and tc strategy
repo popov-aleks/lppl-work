@@ -35,7 +35,7 @@ stocks10 = stocks[:10]
 model_window_param = 70
 b_weight_param = 0.8
 r2_weight_param = 0.2
-signal_threshold_param = 85
+signal_threshold_param = 80
 before_tc_param = 25
 max_searches_param = 20
 after_tc_param = 25
@@ -52,9 +52,9 @@ def func(x, a, b, c):
     return a * np.exp(b * x) + c
 
 def adjust_threshold(pe_ratio, pe_ratio_avg, signal_threshold):
-    if pe_ratio < 0.95 * pe_ratio_avg:
-        signal_threshold += 10
-    elif pe_ratio > 1.05 * pe_ratio_avg:
+    if pe_ratio < 0.97 * pe_ratio_avg:
+        signal_threshold += 5
+    elif pe_ratio > 1.03 * pe_ratio_avg:
         signal_threshold -= 5
     return signal_threshold
 
@@ -222,6 +222,7 @@ def exp_growth_and_r2(close,
     try:
         output = np.zeros(len(close))
         ticker = close.columns[0]
+        signal_list = [0, 0, 0]  # list to keep track of the last 3 signals
         for i in range(model_window, len(close), 7):
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
                 continue
@@ -238,7 +239,9 @@ def exp_growth_and_r2(close,
 
             signal = calculate_signal(b_value, r2_value, b_weight, r2_weight)
 
-            if signal > signal_threshold:
+            signal_list = signal_list[1:] + [signal]  # update the signal list to keep the last 3 signals
+
+            if all(s > signal_threshold for s in signal_list):  # modified condition to check the last 3 signals
                 historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
                 time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
                 price = np.log(historical_data.values).ravel()
