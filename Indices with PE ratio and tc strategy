@@ -35,13 +35,13 @@ stocks10 = stocks[:10]
 model_window_param = 70
 b_weight_param = 0.8
 r2_weight_param = 0.2
-signal_threshold_param = 90
+signal_threshold_param = 75
 before_tc_param = 25
 max_searches_param = 20
-after_tc_param = 15
+after_tc_param = 25
 
 # Date range
-start_date='2016-06-01'
+start_date='2013-06-01'
 end_date='2023-07-01'
 
 #Helper functions
@@ -65,7 +65,7 @@ def calculate_signal(b_value, r2_value, b_weight, r2_weight):
 
 def fit_lppls_model(observations, max_searches):
     tcs = []
-    for _ in range(11):
+    for _ in range(7):
         lppls_model = lppls.LPPLS(observations=observations)
         tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
         tcs.append(tc)
@@ -109,7 +109,7 @@ def custom_date_parser(date_float):
         month = round((date_float - year) * 100)
         return pd.to_datetime(f'{year}-{month:02}', format='%Y-%m')
 
-pe_ratio_df = pd.read_excel('ie_data.xlsx.xlsx', sheet_name='Data', header=[6, 7])
+pe_ratio_df = pd.read_excel('ie_data.xlsx', sheet_name='Data', header=[6, 7])
 pe_ratio_df.dropna(how='all', inplace=True)
 pe_ratio_df.columns = pe_ratio_df.columns.map(' '.join).str.strip()
 pe_ratio_df['Unnamed: 0_level_0 Date'] = pe_ratio_df['Unnamed: 0_level_0 Date'].apply(custom_date_parser)
@@ -137,7 +137,7 @@ def compute_fetch_start_date(start_date, model_window):
 fetch_start_date_stocks = compute_fetch_start_date(start_date, model_window_param)
 
 # Downloading data
-data = yf.download(['VCR', 'RSPD', 'FDIS', 'XLY', 'XHB', 'IYC', 'RTH', 'ITB', 'XRT', 'FXD', 'IBUY'], start=fetch_start_date_stocks, end=end_date)['Close']
+data = yf.download(['VCR', 'RSPD', 'FDIS', 'XLY', 'XHB', 'IYC', 'RTH', 'ITB', 'XRT', 'FXD'], start=fetch_start_date_stocks, end=end_date)['Close']
 data = data.ffill().bfill()
 
 # This is our function to analyse our data- any analysis and any indicators on the stock are created here to
@@ -150,7 +150,7 @@ def analyze_stocks(data, model_window = model_window_param):
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
     all_dates = data.index.unique()
-    for i in range(model_window, len(all_dates), 30): # here we loop over dates first
+    for i in range(model_window, len(all_dates), 15): # here we loop over dates first
         date_b_values = []
         date_r2_values = []
         tickers = []
@@ -222,7 +222,7 @@ def exp_growth_and_r2(close,
     try:
         output = np.zeros(len(close))
         ticker = close.columns[0]
-        for i in range(model_window, len(close), 30):
+        for i in range(model_window, len(close), 15):
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
                 continue
             pe_ratio_df_local = pe_ratio_df.copy()
