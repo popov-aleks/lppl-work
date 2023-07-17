@@ -52,9 +52,9 @@ def func(x, a, b, c):
     return a * np.exp(b * x) + c
 
 def adjust_threshold(pe_ratio, pe_ratio_avg, signal_threshold):
-    if pe_ratio < 0.95 * pe_ratio_avg:
+    if pe_ratio < 0.97 * pe_ratio_avg:
         signal_threshold += 5
-    elif pe_ratio > 1.05 * pe_ratio_avg:
+    elif pe_ratio > 1.03 * pe_ratio_avg:
         signal_threshold -= 5
     return signal_threshold
 
