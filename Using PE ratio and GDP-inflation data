@@ -1,1 +1,420 @@
+import vectorbt as vbt
+import yfinance as yf
+import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta
+from scipy.optimize import least_squares
+from sklearn.metrics import r2_score
+import warnings
+from lppls import lppls
+import time
+from vectorbt.portfolio.enums import SizeType
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+from vectorbt.generic.plotting import Scatter
 
+warnings.filterwarnings('ignore')
+
+# S&P 500 stocks
+url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+tables = pd.read_html(url)
+table = tables[0]
+stocks = table['Symbol'].tolist()
+stocks.remove('BRK.B')
+stocks.remove('BF.B')
+stocks.remove('GEHC')
+stocks.remove('CEG')
+stocks.remove('OTIS')
+stocks.remove('CARR')
+stocks.remove('OGN')
+stocks100 = stocks[:100]
+stocks10 = stocks[:10]
+
+# Parameters
+model_window_param = 70
+b_weight_param = 0.8
+r2_weight_param = 0.2
+signal_threshold_param = 75
+before_tc_param = 25
+max_searches_param = 20
+after_tc_param = 25
+
+# Date range
+start_date='2021-06-01'
+end_date='2022-06-01'
+
+#Helper functions
+def loss(params, x, y):
+    return func(x, *params) - y
+
+def func(x, a, b, c):
+    return a * np.exp(b * x) + c
+
+def adjust_threshold(pe_ratio, pe_ratio_avg, gdp_inflation, signal_threshold):
+    if pe_ratio < 0.97 * pe_ratio_avg:
+        signal_threshold += 5
+    elif pe_ratio > 1.03 * pe_ratio_avg:
+        signal_threshold -= 5
+    if gdp_inflation > 4:
+        signal_threshold -= 5
+    elif gdp_inflation < -4:
+        signal_threshold +=5
+    return signal_threshold
+
+def calculate_signal(b_value, r2_value, b_weight, r2_weight):
+    b_norm_value = 50 + (100 / 3) * b_value
+    r2_norm_value = 50 + (100 / 3) * r2_value
+    return b_norm_value * b_weight + r2_norm_value * r2_weight
+
+def fit_lppls_model(observations, max_searches):
+    tcs = []
+    for _ in range(7):
+        lppls_model = lppls.LPPLS(observations=observations)
+        tc, m, w, a, b, c1, c2, phi, O, D = lppls_model.fit(max_searches)
+        tcs.append(tc)
+    return np.median(tcs)
+
+def track_price(i, after_tc, close, ticker, output):
+    start_price = close[ticker][i]
+    start_track = False
+    growth_days = 0
+    for j in range(i+1, i+1+after_tc):
+        if j >= len(close):
+            break
+        change_pct = (close[ticker][j] - start_price) / start_price
+        if not start_track:
+            if change_pct <= -0.1:  # The price drops 3%
+                start_track = True
+        if start_track:
+            if close[ticker][j] > close[ticker][j-1]:  # Price grows compared to the previous day
+                growth_days += 1
+            else:  # If the price drops, reset the counter
+                growth_days = 0
+        if growth_days >= 3:  # 3 growth days in a row
+            output[j] = 1
+            break
+    return output
+
+start_time = time.time()
+
+# Cleaning up pe ratio data + adding rolling average (to compare pe to long-term trend). Uses the Schiller PE data
+# from this website: http://www.econ.yale.edu/~shiller/data.htm (I believe this is updated at the start of each
+# month. However, need to save it as a .xlsx file, not .xls
+pe_ratio_df = pd.read_csv('processed_data.csv', index_col=0, parse_dates=True)
+gdp_inflation_df = pd.read_csv('merged_data.csv')
+
+# Compute fetch_start_date for stocks to be model_window days before the start_date
+def compute_fetch_start_date(start_date, model_window):
+    start_date_dt = pd.to_datetime(start_date)
+    business_days = 0
+    current_date = start_date_dt
+    while business_days < model_window:
+        current_date -= pd.DateOffset(days=1)
+        if current_date.dayofweek < 5:  # It's a weekday
+            business_days += 1
+    return current_date.strftime("%Y-%m-%d")
+
+fetch_start_date_stocks = compute_fetch_start_date(start_date, model_window_param)
+
+# Downloading data
+data = yf.download(['VCR', 'RSPD', 'FDIS', 'XLY', 'XHB', 'IYC', 'RTH', 'ITB', 'XRT', 'FXD'], start=fetch_start_date_stocks, end=end_date)['Close']
+data = data.ffill().bfill()
+
+# This is our function to analyse our data- any analysis and any indicators on the stock are created here to
+# declunk the function which creates signals. Currently, I am implementing a strategy which is based on the modelling of the log of 5-day moving average of the price data
+# model_window days before the current date to an exponential curve. This modelling happens every 30 days (but can be modified).
+# This is slightly arbitrary, but is just a starting point I chose, where the threshold depends on the multiple of the
+# model's exponent and its r^2 value, ie how closely it resembles a faster-than-exponential growth. I then normalise
+# these values between all stocks for any given day.
+def analyze_stocks(data, model_window = model_window_param):
+    df_b = pd.DataFrame()
+    df_r2 = pd.DataFrame()
+    all_dates = data.index.unique()
+    for i in range(model_window, len(all_dates), 30): # here we loop over dates first
+        date_b_values = []
+        date_r2_values = []
+        tickers = []
+        for ticker in data.columns:
+            df = data[ticker]
+            if all_dates[i] not in df.index:
+                continue
+            historical_data = df.loc[all_dates[i-model_window]:all_dates[i]]
+            historical_data = historical_data.rolling(window=5).mean().dropna()
+            if len(historical_data) == 0:
+                continue
+            xdata = (historical_data.index - historical_data.index[0]).days.values
+            ydata = historical_data.values
+            log_ydata = np.log(ydata + 1).ravel()
+            res = least_squares(loss, x0=(1, 0.01, 1), args=(xdata, log_ydata))
+            fitted_y = func(xdata, *res.x).ravel()
+            a, b, c = res.x
+            r2 = r2_score(log_ydata, fitted_y)
+
+            date_b_values.append(b)
+            date_r2_values.append(r2)
+            tickers.append(ticker)
+        scaler = StandardScaler()
+        date_b_values_scaled = scaler.fit_transform(np.array(date_b_values).reshape(-1,1)).ravel()
+        date_r2_values_scaled = scaler.fit_transform(np.array(date_r2_values).reshape(-1,1)).ravel()
+        df_b_temp = pd.DataFrame(date_b_values_scaled, columns=[all_dates[i]], index=tickers).T
+        df_r2_temp = pd.DataFrame(date_r2_values_scaled, columns=[all_dates[i]], index=tickers).T
+        df_b = pd.concat([df_b, df_b_temp], axis=0)
+        df_r2 = pd.concat([df_r2, df_r2_temp], axis=0)
+    return df_b, df_r2
+
+# Creating dataframes for b and r2 values
+df_b_values, df_r2_values = analyze_stocks(data, model_window_param)
+df_b_values = df_b_values.loc[~df_b_values.index.duplicated(keep='first')]
+df_r2_values = df_r2_values.loc[~df_r2_values.index.duplicated(keep='first')]
+df_b_values = df_b_values.reindex(data.index)
+df_r2_values = df_r2_values.reindex(data.index)
+
+initial_capital = 1000000
+
+# This is the function that actually generates buy and sell signals. Most of the logic is in the helper functions.
+# Essentially, we get the normalised signal values from analyse_stocks, put them on a standard distribution, with
+# a mean of 50, where 0 and 100 are 3 standard deviations away (and so 99% of values fall within those numbers).
+# Then, we give each of the signals a weighting and, if the overall signal is greater than the threshold, we use
+# the LPPL model. We fit the log of the past model_window days of data (as the LPPL model relies on oscillations
+# around exponential growth) 7 times, taking the median of the data (will probably want to do that as many times
+# as possible to remove outliers). We sell the stock if the tc is less than before_tc days away. Then, we implement
+# a buyback logic. In this logic, we have a hard cap after which we buy the stock back- the after_tc parameter.
+# However, if a stock falls a certain amount, and then experiences a certain number of consecutive growth days,
+# we buy it back then. The logic is that the bubble may have already burst, and waiting any longer will simply
+# mean that the stock recovers its value, and we have to pay more for it. For the purposes of the backtest, we
+# sell everything at the end.
+
+def exp_growth_and_r2(close,
+                      df_b_values,
+                      df_r2_values,
+                      model_window=model_window_param,
+                      signal_threshold=signal_threshold_param,
+                      b_weight = b_weight_param,
+                      r2_weight = r2_weight_param,
+                      before_tc=before_tc_param,
+                      max_searches=max_searches_param,
+                      after_tc=after_tc_param):
+
+    try:
+        output = np.zeros(len(close))
+        ticker = close.columns[0]
+        for i in range(model_window, len(close), 30):
+            if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
+                continue
+            pe_ratio_df_local = pe_ratio_df.copy()
+            gdp_inflation_df_local = gdp_inflation_df.copy()
+            print(gdp_inflation_df_local)
+            target_date = close.index[i]
+            pe_ratio_row = pe_ratio_df_local.loc[target_date]
+            pe_ratio_avg = pe_ratio_row['PE_Rolling_Avg']
+            pe_ratio = pe_ratio_row['P/E10 or CAPE']
+            print(gdp_inflation_df_local.loc[target_date])
+            gdp_inflation_row = gdp_inflation_df_local.loc[target_date]
+            print(gdp_inflation_row)
+            gdp_inflation = gdp_inflation_row['GDP growth - inflation']
+            print(gdp_inflation)
+
+            signal_threshold = adjust_threshold(pe_ratio, pe_ratio_avg, gdp_inflation, signal_threshold)
+
+            b_value = df_b_values.loc[close.index[i], ticker]
+            r2_value = df_r2_values.loc[close.index[i], ticker]
+
+            signal = calculate_signal(b_value, r2_value, b_weight, r2_weight)
+
+            if signal > signal_threshold:
+                historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
+                time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
+                price = np.log(historical_data.values).ravel()
+                observations = np.array([time, price])
+                tc = fit_lppls_model(observations, max_searches)
+                tc = tc - datetime.toordinal(historical_data.index[-1])
+
+                if tc < before_tc:  # Sell the stock when a crash is predicted within 30 days
+                    output[i] = -1
+                    output = track_price(i, after_tc, close, ticker, output)
+
+                    # If we have not bought back within 'after_tc' days, we buy it back anyway
+                    if (i + after_tc) < len(output) and output[i + after_tc] != -1:  # Buy it back after 'after_tc' days if it's not sold
+                        output[i + after_tc] = 1
+
+            signal_threshold = signal_threshold_param
+        output[-1] = -1  # Sell everything at the end of the window
+        return output
+
+    except Exception as e:
+        print(f"Couldn't process stock at index {i}, ticker {ticker}. Error: {str(e)}")
+
+# Creating the indicator
+BuyIndicator = vbt.IndicatorFactory(
+    input_names=['close', 'df_b_values', 'df_r2_values'],
+    param_names=['model_window',
+                'signal_threshold',
+                'b_weight',
+                'r2_weight',
+                'before_tc',
+                'max_searches',
+                'after_tc'],
+    output_names=['buy_indicator']
+).from_apply_func(exp_growth_and_r2,
+                model_window=model_window_param,
+                signal_threshold=signal_threshold_param,
+                b_weight = b_weight_param,
+                r2_weight = r2_weight_param,
+                before_tc=before_tc_param,
+                max_searches=max_searches_param,
+                after_tc=after_tc_param,
+                keep_pd=True,
+                per_column=True)
+
+# Running the data through our indicator- days when we buy will have a value of 1, and when we sell -1. 0 otherwise
+buy_indicator = BuyIndicator.run(data,
+                                df_b_values,
+                                df_r2_values,
+                                model_window=model_window_param,
+                                signal_threshold=signal_threshold_param,
+                                b_weight = b_weight_param,
+                                r2_weight = r2_weight_param,
+                                before_tc=before_tc_param,
+                                max_searches=max_searches_param,
+                                after_tc=after_tc_param)
+
+# Getting the entry_signal and exit_signal series
+entry_signal = buy_indicator.buy_indicator == 1
+exit_signal = buy_indicator.buy_indicator == -1
+
+# Dropping some extra columns to make it match data
+entry_signal.columns = entry_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_before_tc', 'custom_max_searches', 'custom_after_tc'])
+exit_signal.columns = exit_signal.columns.droplevel(['custom_model_window', 'custom_signal_threshold', 'custom_b_weight', 'custom_r2_weight', 'custom_before_tc', 'custom_max_searches', 'custom_after_tc'])
+
+print(entry_signal)
+print(exit_signal)
+
+# Cropping the data for the backtest to make it faster
+data = data.loc[start_date:end_date]
+entry_signal = entry_signal.loc[start_date:end_date]
+exit_signal = exit_signal.loc[start_date:end_date]
+
+entry_signal.iloc[0] = True
+
+# Assigning an equal proportion of the capital to each stock, investing it all when we get an entr signal
+#num_stocks_to_buy = entry_signal.sum(axis=1)
+#weights = entry_signal.div(num_stocks_to_buy, axis=0)
+#weights = weights.mul(initial_capital / data).fillna(0)
+
+portfolio = vbt.Portfolio.from_signals(
+    data,
+    entry_signal,
+    exit_signal,
+    init_cash=initial_capital,
+#    size=weights,
+#    size_type='Amount',
+    fees=0.001
+)
+
+print("Overall portfolio:")
+# Add the benchmark returns to the portfolio stats
+print(portfolio.stats(metrics = ["start", 
+                                 "end", 
+                                 "period", 
+                                 "start_value", 
+                                 "end_value", 
+                                 "total_return", 
+                                 "benchmark_return",
+                                 "max_gross_exposure", 
+                                 "total_fees_paid", 
+                                 "max_dd", 
+                                 "total_trades", 
+                                 "win_rate", 
+                                 "profit_factor", 
+                                 "expectancy", 
+                                 "sharpe_ratio", 
+                                 "sortino_ratio"], group_by = True))
+
+# Get exposure for the entire duration of portfolio
+exposure = portfolio.gross_exposure(group_by=True)
+
+print(f"Average exposure: {exposure.mean()}")
+
+# Getting Sharpe and Sortino ratios
+print(f"Sharpe ratio: {portfolio.sharpe_ratio(group_by = True, freq='D')}")
+print(f"Sortino ratio: {portfolio.sortino_ratio(group_by = True, freq='D')}")
+
+#Printing stats for the benchmark- simply holding onto the indices for the entire period
+hold_data = data
+hold_portfolio = vbt.Portfolio.from_holding(hold_data, init_cash=initial_capital, fees=0.001)
+
+benchmark_stats = hold_portfolio.stats()
+print("\nBenchmark stats:")
+print(benchmark_stats)
+
+print(f"Sharpe ratio: {hold_portfolio.sharpe_ratio(group_by = True, freq='D')}")
+print(f"Sortino ratio: {hold_portfolio.sortino_ratio(group_by = True, freq='D')}")
+
+# Looking at statistics for individual indices- not always needed
+stocks_with_pf = ['VCR', 'RSPD', 'FDIS', 'XLY', 'XHB', 'IYC', 'RTH', 'ITB', 'XRT', 'FXD']
+for stock in stocks_with_pf:
+
+    # Create portfolio for each stock
+    portfolio = vbt.Portfolio.from_signals(
+        data[stock],
+        entry_signal[stock],
+        exit_signal[stock],
+        init_cash=initial_capital,
+        fees=0.001
+    )
+
+    print(f"Stats for {stock}:")
+    
+    # Print out portfolio stats
+    stats = portfolio.stats(metrics=[
+        "start", 
+        "end", 
+        "period", 
+        "start_value", 
+        "end_value", 
+        "total_return", 
+        "benchmark_return",
+        "max_gross_exposure", 
+        "total_fees_paid", 
+        "max_dd", 
+        "total_trades", 
+        "win_rate", 
+        "profit_factor", 
+        "expectancy", 
+        "sharpe_ratio", 
+        "sortino_ratio"
+    ])
+    print(stats)
+
+    # Calculate and print exposure
+    exposure = portfolio.gross_exposure()
+    print(f"Average exposure: {exposure.mean()}")
+
+    # Calculate, adjust and print returns
+    returns = portfolio.returns()
+    adjusted_returns = returns / exposure
+    adjusted_returns = adjusted_returns.replace([np.inf, -np.inf], np.nan)
+    adjusted_total_returns = (adjusted_returns + 1).cumprod() - 1
+    final_adjusted_total_return = adjusted_total_returns.iloc[-1]
+    print(f"Final adjusted total return: {final_adjusted_total_return * 100:.2f}%")
+
+    # Print Sharpe and Sortino ratios
+    print(f"Sharpe ratio: {portfolio.sharpe_ratio(freq='D')}")
+    print(f"Sortino ratio: {portfolio.sortino_ratio(freq='D')}")
+
+    # Create and print benchmark portfolio stats
+    hold_portfolio = vbt.Portfolio.from_holding(data[stock], init_cash=initial_capital, fees=0.001)
+    benchmark_stats = hold_portfolio.stats()
+    print("\nBenchmark stats for {stock}:")
+    print(benchmark_stats)
+
+    # Print benchmark Sharpe and Sortino ratios
+    print(f"Benchmark Sharpe ratio: {hold_portfolio.sharpe_ratio(freq='D')}")
+    print(f"Benchmark Sortino ratio: {hold_portfolio.sortino_ratio(freq='D')}")
+    print("\n" + "="*50 + "\n")
+    
+    portfolio.plot().show()
+
+end_time = time.time()
+print(f'Time taken: {end_time - start_time} seconds')
