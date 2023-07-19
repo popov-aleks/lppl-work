@@ -104,8 +104,8 @@ start_time = time.time()
 # Cleaning up pe ratio data + adding rolling average (to compare pe to long-term trend). Uses the Schiller PE data
 # from this website: http://www.econ.yale.edu/~shiller/data.htm (I believe this is updated at the start of each
 # month. However, need to save it as a .xlsx file, not .xls
-pe_ratio_df = pd.read_csv('processed_data.csv', index_col=0, parse_dates=True)
-gdp_inflation_df = pd.read_csv('merged_data.csv', parse_dates=['DATE'])
+pe_ratio_df = pd.read_csv('pe_data.csv', index_col=0, parse_dates=True)
+gdp_inflation_df = pd.read_csv('gdp_inflation_data.csv', parse_dates=['DATE'])
 gdp_inflation_df.set_index('DATE', inplace=True)
 
 # Compute fetch_start_date for stocks to be model_window days before the start_date
