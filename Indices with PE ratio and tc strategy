@@ -42,7 +42,7 @@ after_tc_param = 25
 
 # Date range
 start_date='2013-06-01'
-end_date='2023-07-01'
+end_date='2023-01-01'
 
 #Helper functions
 def loss(params, x, y):
