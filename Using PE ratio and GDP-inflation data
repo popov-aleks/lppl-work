@@ -40,6 +40,9 @@ before_tc_param = 25
 max_searches_param = 20
 after_tc_param = 25
 
+days_between_analyses = 7
+signals_in_a_row = 2
+
 # Date range
 start_date='2021-06-01'
 end_date='2022-06-01'
@@ -56,10 +59,10 @@ def adjust_threshold(pe_ratio, pe_ratio_avg, gdp_inflation, signal_threshold):
         signal_threshold += 5
     elif pe_ratio > 1.03 * pe_ratio_avg:
         signal_threshold -= 5
-    if gdp_inflation > 4:
+    if gdp_inflation > 6:
         signal_threshold -= 5
-    elif gdp_inflation < -4:
-        signal_threshold +=5
+    elif gdp_inflation < -6:
+        signal_threshold += 5
     return signal_threshold
 
 def calculate_signal(b_value, r2_value, b_weight, r2_weight):
@@ -102,7 +105,8 @@ start_time = time.time()
 # from this website: http://www.econ.yale.edu/~shiller/data.htm (I believe this is updated at the start of each
 # month. However, need to save it as a .xlsx file, not .xls
 pe_ratio_df = pd.read_csv('processed_data.csv', index_col=0, parse_dates=True)
-gdp_inflation_df = pd.read_csv('merged_data.csv')
+gdp_inflation_df = pd.read_csv('merged_data.csv', parse_dates=['DATE'])
+gdp_inflation_df.set_index('DATE', inplace=True)
 
 # Compute fetch_start_date for stocks to be model_window days before the start_date
 def compute_fetch_start_date(start_date, model_window):
@@ -131,7 +135,7 @@ def analyze_stocks(data, model_window = model_window_param):
     df_b = pd.DataFrame()
     df_r2 = pd.DataFrame()
     all_dates = data.index.unique()
-    for i in range(model_window, len(all_dates), 30): # here we loop over dates first
+    for i in range(model_window, len(all_dates), days_between_analyses): # here we loop over dates first
         date_b_values = []
         date_r2_values = []
         tickers = []
@@ -199,21 +203,20 @@ def exp_growth_and_r2(close,
     try:
         output = np.zeros(len(close))
         ticker = close.columns[0]
-        for i in range(model_window, len(close), 30):
+        signal_list = [0] * signals_in_a_row
+        for i in range(model_window, len(close), days_between_analyses):
             if np.isnan(df_b_values.loc[close.index[i], ticker]) or np.isnan(df_r2_values.loc[close.index[i], ticker]):
                 continue
             pe_ratio_df_local = pe_ratio_df.copy()
             gdp_inflation_df_local = gdp_inflation_df.copy()
-            print(gdp_inflation_df_local)
+            
             target_date = close.index[i]
+
             pe_ratio_row = pe_ratio_df_local.loc[target_date]
             pe_ratio_avg = pe_ratio_row['PE_Rolling_Avg']
             pe_ratio = pe_ratio_row['P/E10 or CAPE']
-            print(gdp_inflation_df_local.loc[target_date])
             gdp_inflation_row = gdp_inflation_df_local.loc[target_date]
-            print(gdp_inflation_row)
             gdp_inflation = gdp_inflation_row['GDP growth - inflation']
-            print(gdp_inflation)
 
             signal_threshold = adjust_threshold(pe_ratio, pe_ratio_avg, gdp_inflation, signal_threshold)
 
@@ -222,7 +225,9 @@ def exp_growth_and_r2(close,
 
             signal = calculate_signal(b_value, r2_value, b_weight, r2_weight)
 
-            if signal > signal_threshold:
+            signal_list = signal_list[1:] + [signal]
+
+            if all(s > signal_threshold for s in signal_list):
                 historical_data = close.iloc[i-model_window:i]  # slice close price data for historical data
                 time = [pd.Timestamp.toordinal(t) for t in historical_data.index]
                 price = np.log(historical_data.values).ravel()
