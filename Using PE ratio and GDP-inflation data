@@ -41,7 +41,7 @@ max_searches_param = 20
 after_tc_param = 25
 
 days_between_analyses = 7
-signals_in_a_row = 2
+signals_in_a_row = 3
 
 # Date range
 start_date='2013-06-01'
