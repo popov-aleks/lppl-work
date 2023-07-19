@@ -44,8 +44,8 @@ days_between_analyses = 7
 signals_in_a_row = 2
 
 # Date range
-start_date='2021-06-01'
-end_date='2022-06-01'
+start_date='2013-06-01'
+end_date='2023-06-01'
 
 #Helper functions
 def loss(params, x, y):
