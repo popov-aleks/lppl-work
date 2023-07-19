@@ -45,7 +45,7 @@ signals_in_a_row = 2
 
 # Date range
 start_date='2013-06-01'
-end_date='2023-06-01'
+end_date='2023-01-01'
 
 #Helper functions
 def loss(params, x, y):
