@@ -1,0 +1,30 @@
+import yfinance as yf
+from lppls import lppls
+import numpy as np
+import pandas as pd
+from datetime import datetime as dt
+
+%matplotlib inline
+
+data = yf.download('NVDA', start = dt.now() - pd.DateOffset(years=1), end = dt.now())
+
+data = data.tail(70)
+
+time = [pd.Timestamp.toordinal(pd.Timestamp(t1)) for t1 in data.index]
+
+price = np.log(data['Adj Close'].values)
+
+# create observations array (expected format for LPPLS observations)
+observations = np.array([time, price])
+
+# set the max number for searches to perform before giving-up
+# the literature suggests 25
+max_searches = 22
+
+fitting_params = []
+for _ in range(11):
+    lppl_model = lppls.LPPLS(observations=observations)
+    params = lppl_model.fit(max_searches)
+    if params[0] != 0:
+        lppl_model.plot_fit()
+        print(params[0] - dt.toordinal(data.index[-1]))
